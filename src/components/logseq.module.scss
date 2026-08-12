@@ -36,7 +36,7 @@
   // top: 0;
 }
 
-:root {
+.copilotSurface {
   --cardShadow: color-mix(in srgb, black 30%, transparent) 0 1px 2px 0,
     color-mix(in srgb, black 15%, transparent) 0 1px 3px 1px;
 
@@ -48,6 +48,8 @@
   //   --cardBG: #292a2d;
   //   --markerStatusHoverColor: white;
   // }
+
+  display: contents;
 }
 
 .page {

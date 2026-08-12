@@ -1,5 +1,4 @@
 @import url(../../icon.css);
-@tailwind base;
 
 .copilot {
   @apply flex flex-col w-full max-w-sm gap-2 pb-4;
@@ -53,7 +52,7 @@
   @apply rounded-lg h-6 w-6;
 }
 
-::highlight(copilot-highlight) {
+::highlight(logseq-copilot-highlight) {
   background-color: rgba(255, 192, 4, 0.5);
   color: black;
 }

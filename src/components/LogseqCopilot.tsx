@@ -63,14 +63,14 @@ const LogseqCopilot = ({ graph, pages, blocks }) => {
   }
 
   return (
-    <>
+    <div className={styles.copilotSurface}>
       <div className={styles.copilotCardHeader}>
         <span>Graph: {graph}</span>
         <IconSettings onClick={goOptionPage} size={16} />
       </div>
       {pagesRender()}
       {blocksRender()}
-    </>
+    </div>
   );
 };
 

@@ -8,6 +8,7 @@ import scssStyles from './index.module.scss';
 const logseqCopilotPopupId = 'logseq-copilot-popup';
 export const zIndex = '2147483647';
 const highlights = CSS.highlights;
+const highlightName = 'logseq-copilot-highlight';
 
 const capture = () => {
   const selection = getSelection();
@@ -34,10 +35,10 @@ const clipPage = () => {
 
 const setHighlight = (range: Range) => {
   try {
-    if (!highlights.has("copilot-highlight")) {
-      highlights.set('copilot-highlight', new Highlight())
+    if (!highlights.has(highlightName)) {
+      highlights.set(highlightName, new Highlight())
     }
-    const highlight = highlights.get('copilot-highlight');
+    const highlight = highlights.get(highlightName);
     highlight.add(range);
   } catch (error) {
     console.debug("platform not support highlight function")
