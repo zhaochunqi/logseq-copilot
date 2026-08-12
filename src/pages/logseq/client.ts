@@ -1,4 +1,7 @@
-import { getLogseqCopliotConfig } from '../../config';
+import {
+  getLogseqCopliotConfig,
+  LogseqCopliotConfig,
+} from '../../config';
 
 export type LogseqPageResponse = {
   name: string;
@@ -13,11 +16,24 @@ export type LogseqResponseType<T> = {
   count?: number;
 };
 
+/**
+ * Build the Logseq HTTP API endpoint from the options page config.
+ * The options page edits host name and port as separate fields; the legacy
+ * `logseqHost` full URL is kept only as a fallback for old installs.
+ */
+export const buildApiUrl = (config: LogseqCopliotConfig): URL => {
+  const fallback = new URL(config.logseqHost || 'http://localhost:12315');
+  const host = config.logseqHostName.includes('://')
+    ? new URL(config.logseqHostName).hostname
+    : config.logseqHostName || fallback.hostname;
+  const port = config.logseqPort || fallback.port || '12315';
+  return new URL(`http://${host}:${port}/api`);
+};
+
 export default class LogseqClientBase {
   baseFetch = async (method: string, args: any[]) => {
     const config = await getLogseqCopliotConfig();
-    const endPoint = new URL(config.logseqHost);
-    const apiUrl = new URL(`${endPoint.origin}/api`);
+    const apiUrl = buildApiUrl(config);
     const resp = await fetch(apiUrl, {
       mode: 'cors',
       method: 'POST',
