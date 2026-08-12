@@ -1,0 +1,6 @@
+allowBuilds:
+  core-js: true
+  dtrace-provider: true
+  esbuild: true
+  spawn-sync: true
+  vue-demi: true
