@@ -1,6 +1,7 @@
 import { LogseqPageIdenity } from '@/types/logseqBlock';
 
 import styles from './logseq.module.scss';
+import { viewerUrl } from './viewerUrl';
 
 type LogseqPageLinkProps = {
   page: LogseqPageIdenity;
@@ -21,7 +22,10 @@ const LogseqPageLink = ({
     <>
       <a
         className={styles.logseqPageLink}
-        href={`logseq://graph/${graph}?page=${page?.name}`}
+        href={viewerUrl(page?.name)}
+        data-logseq-page={page?.name}
+        target="_blank"
+        rel="noreferrer"
       >
         <span className="tie tie-page"></span>
         {page?.originalName || page?.title}

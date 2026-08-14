@@ -1,6 +1,12 @@
 import archiver from 'archiver';
 import autoprefixer from 'autoprefixer';
 import * as dotenv from 'dotenv';
+// 本地开发构建（npm run build:local）：不注入商店公钥，Chrome 生成独立开发 ID，
+// 避免与商店版同 ID 冲突导致 chrome-extension:// 页面被屏蔽（ERR_BLOCKED_BY_CLIENT）。
+const isLocalBuild = process.argv.includes('--local') || process.env.LOCAL_BUILD === '1';
+if (isLocalBuild) {
+  delete process.env.CHROME_EXTENSION_KEY;
+}
 import esbuild from 'esbuild';
 import postcssPlugin from 'esbuild-style-plugin';
 import fs from 'fs-extra';
@@ -11,13 +17,19 @@ import remToPx from 'postcss-rem-to-pixel';
 
 dotenv.config();
 
-const outdir = 'build';
+// 本地构建输出到独立目录 build-local/（发布构建用 build/）。
+// 关键：本地构建绝不整目录删除 —— Chrome 加载的 unpacked 扩展目录一旦被删，
+// 扩展即失效，其 chrome-extension:// 页面会报 ERR_BLOCKED_BY_CLIENT。
+const outdir = isLocalBuild ? 'build-local' : 'build';
 
 const nodeEnv = JSON.stringify(process.env.NODE_ENV || 'production');
 const VERSION = `${process.env.VERSION}` || '0.0.0';
 
 async function deleteOldDir() {
-  await fs.remove(outdir);
+  // 发布构建：干净输出；本地构建：保留目录（esbuild/copy 覆盖写，避免扩展失效）
+  if (!isLocalBuild) {
+    await fs.remove(outdir);
+  }
 }
 
 async function runEsbuild() {
@@ -27,6 +39,7 @@ async function runEsbuild() {
       'src/pages/background/index.ts',
       'src/pages/options/index.tsx',
       'src/pages/popup/index.tsx',
+      'src/pages/viewer/index.tsx',
     ],
     bundle: true,
     outdir: outdir,
@@ -78,15 +91,17 @@ async function build() {
   await runEsbuild();
 
   const commonFiles = [
-    { src: 'build/content/index.js', dst: 'content-script.js' },
-    { src: 'build/content/index.css', dst: 'content-script.css' },
-    { src: 'build/background/index.js', dst: 'background.js' },
-    { src: 'build/options/index.js', dst: 'options.js' },
-    { src: 'build/options/index.css', dst: 'options.css' },
-    { src: 'build/popup/index.js', dst: 'popup.js' },
-    { src: 'build/popup/index.css', dst: 'popup.css' },
+    { src: `${outdir}/content/index.js`, dst: 'content-script.js' },
+    { src: `${outdir}/content/index.css`, dst: 'content-script.css' },
+    { src: `${outdir}/background/index.js`, dst: 'background.js' },
+    { src: `${outdir}/options/index.js`, dst: 'options.js' },
+    { src: `${outdir}/options/index.css`, dst: 'options.css' },
+    { src: `${outdir}/popup/index.js`, dst: 'popup.js' },
+    { src: `${outdir}/popup/index.css`, dst: 'popup.css' },
     { src: 'src/pages/options/index.html', dst: 'options.html' },
     { src: 'src/pages/popup/index.html', dst: 'popup.html' },
+    { src: 'src/pages/viewer/index.html', dst: 'viewer.html' },
+    { src: `${outdir}/viewer/index.js`, dst: 'viewer.js' },
     { src: 'src/assets', dst: 'assets' },
   ];
 

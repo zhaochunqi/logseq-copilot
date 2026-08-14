@@ -6,9 +6,22 @@ import LogseqDBService from './db/service';
 import LogseqService from './normal/service';
 import { LogseqServiceInterface } from './interfaces';
 
-const client = new LogseqClient();
-const logseqServiceDB = new LogseqDBService();
-const logseqService = new LogseqService();
+// 懒初始化单例：tool.ts ↔ normal/service.ts 存在循环依赖（service 用 renderBlock，
+// tool 用 LogseqService），模块顶层直接 new 会让先执行的一方拿到未定义的类而崩溃
+// （独立 Web 入口从 normal/service 进入时必现；扩展入口从 tool 进入恰好幸免）。
+// 实例化推迟到首次调用，保证类已定义。
+let client: LogseqClient | undefined;
+let logseqServiceDB: LogseqDBService | undefined;
+let logseqService: LogseqService | undefined;
+
+const getInstances = () => {
+  if (!client) {
+    client = new LogseqClient();
+    logseqServiceDB = new LogseqDBService();
+    logseqService = new LogseqService();
+  }
+  return { client, logseqServiceDB, logseqService };
+};
 
 export const cleanBlock = (block: LogseqBlockType): string => {
   let result = block.content;
@@ -76,7 +89,12 @@ const logseqLinkExt = (graph: string, query?: string) => {
       const fillText = query
         ? text.replaceAll(query, '<mark>' + query + '</mark>')
         : text;
-      return `<a class="logseq-page-link" href="logseq://graph/${graph}?page=${href}"><span class="tie tie-page"></span>${fillText}</a>`;
+      // 不依赖 Logseq 桌面端：[[页面]] 链接带 data-logseq-page 标记，点击行为由宿主决定
+      // （扩展 → 打开 viewer 渲染页；web 版 → 页面内浏览），不再生成 logseq:// 协议链接。
+      const safeHref = href.replaceAll('&', '&amp;').replaceAll('"', '&quot;');
+      // 不带 href：悬停/复制链接不会显示成宿主页 URL（如 google 搜索页），
+      // 点击行为由宿主对 [data-logseq-page] 的事件委托处理。
+      return `<a class="logseq-page-link" data-logseq-page="${safeHref}" target="_blank" rel="noreferrer"><span class="tie tie-page"></span>${fillText}</a>`;
     },
   };
 };
@@ -100,6 +118,7 @@ export const renderBlock = (
 };
 
 export const getLogseqService = async (): Promise<LogseqServiceInterface> => {
+  const { client, logseqServiceDB, logseqService } = getInstances();
   try {
     const resp = await client.isDBGraph()
     if (resp === "true" || resp === true || resp === false){

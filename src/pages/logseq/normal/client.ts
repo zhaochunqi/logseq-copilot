@@ -108,6 +108,11 @@ export default class LogseqClient
     return await this.baseJson('get_block', [uuid, opt]);
   };
 
+  /** 页面块树（web 独立版页面浏览用；官方 logseq.Editor.getPageBlocksTree）。 */
+  public getPageBlocksTree = async (page: string) => {
+    return await this.baseJson('logseq.Editor.getPageBlocksTree', [page]);
+  };
+
   public isDBGraph = async () => {
     return await this.baseJson('check_current_is_db_graph', []);
   };

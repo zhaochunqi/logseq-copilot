@@ -2,6 +2,7 @@ import { LogseqBlockType } from '@/types/logseqBlock';
 import LogseqPageLink from './LogseqPage';
 import Browser from 'webextension-polyfill';
 import styles from './logseq.module.scss';
+import { viewerUrl } from './viewerUrl';
 import React, { useEffect } from 'react';
 
 type LogseqBlockProps = {
@@ -100,7 +101,10 @@ export const LogseqBlock = ({ graph, blocks }: LogseqBlockProps) => {
     }
     return <a
       className={styles.toBlock}
-      href={`logseq://graph/${graph}?block-id=${block.uuid}`}
+      href={viewerUrl(block.page?.name)}
+      data-logseq-page={block.page?.name}
+      target="_blank"
+      rel="noreferrer"
     >
       <span className={'tie tie-block'}></span>
       To Block

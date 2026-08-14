@@ -7,13 +7,12 @@ import {
   InputRightElement,
   Button,
   Link,
-  NumberInput,
-  NumberInputField,
 } from '@chakra-ui/react';
 import React, { useEffect } from 'react';
 
 import {
   getLogseqCopliotConfig,
+  normalizeLogseqHost,
   saveLogseqCopliotConfig,
   LogseqCopliotConfig,
 } from '@/config';
@@ -34,37 +33,27 @@ export const LogseqConnectOptions = () => {
     });
   };
 
-  const changeLogseqPort = (port: string) => {
-    if (port === '' || parseInt(port) < 0) {
-      port = '0'
-    }
-    setLogseqConfig({
-      ...logseqConfig,
-      logseqPort: parseInt(port),
-    });
-  }
-
   const triggerShowToken = () => setShowToken(!showToken);
 
   const save = () => {
+    // 配置的是完整 API URL（http/https 均可）；非法时给出明确提示。
+    let apiUrl: URL;
     try {
-      // new URL(logseqConfig!.logseqHost);
+      apiUrl = new URL(normalizeLogseqHost(logseqConfig?.logseqHost || ''));
     } catch (error) {
       setConnected(false);
-      setButtonMessage('Logseq Host is not a URL!');
+      setButtonMessage('Logseq Host is not a valid URL!');
       return;
     }
 
     const promise = new Promise(async () => {
       await saveLogseqCopliotConfig({
         logseqAuthToken: logseqConfig!.logseqAuthToken,
-        logseqHostName: logseqConfig?.logseqHostName,
-        logseqPort: logseqConfig?.logseqPort,
+        logseqHost: apiUrl.toString().replace(/\/$/, ''),
       });
       if (await checkConnection()) {
-        const service = await getLogseqService();
-        const graph = await service.getGraph();
-        window.location = `logseq://graph/${graph!.name}`;
+        // 连接成功后不再跳转 logseq://（依赖 Logseq 桌面端）；
+        // 对接 logseq-graph-api 时桌面端可不存在，成功状态由按钮文案展示。
       }
     });
     promise.then(console.log).catch(console.error);
@@ -115,26 +104,16 @@ export const LogseqConnectOptions = () => {
         columnGap={2}
       >
         <Text gridColumn={'1 / span 2'} fontSize="sm">
-          Host
+          API URL
         </Text>
-        <Text fontSize="sm">Port (1 ~ 65535)</Text>
+        <Text fontSize="sm">e.g. http://localhost:12315</Text>
         <Input
-          gridColumn={'1 / span 2'}
-          name="logseqHostName"
-          placeholder="Logseq Host"
+          gridColumn={'1 / span 3'}
+          name="logseqHost"
+          placeholder="https://logseq-api.mac.zhaochunqi.com"
           onChange={onChange}
-          value={logseqConfig?.logseqHostName}
+          value={logseqConfig?.logseqHost}
         />
-        <NumberInput
-          max={65535}
-          min={1}
-          name="logseqPort"
-          placeholder="Logseq Host"
-          onChange={changeLogseqPort}
-          value={logseqConfig?.logseqPort}
-        >
-          <NumberInputField />
-        </NumberInput>
         <Text fontSize="sm">Authorization Token</Text>
         <InputGroup gridColumn={'1 / span 3'}>
           <Input

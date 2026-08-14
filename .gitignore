@@ -30,3 +30,6 @@ secrets.*.js
 .vscode/
 
 .envrc
+# local build output (unpacked dev extension)
+/build-local
+/web/dist

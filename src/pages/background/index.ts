@@ -1,9 +1,8 @@
 import { browser } from '@/browser';
 import { getLogseqCopliotConfig } from '../../config';
-import { blockRending, versionCompare } from './utils';
+import { blockRending } from './utils';
 import { debounce } from '@/utils';
 import { format } from 'date-fns';
-import { changeOptionsHostToHostNameAndPort } from './upgrade';
 import {getLogseqService} from '@pages/logseq/tool';
 
 browser.runtime.onConnect.addListener((port) => {
@@ -28,6 +27,14 @@ browser.runtime.onConnect.addListener((port) => {
 browser.runtime.onMessage.addListener((msg, sender) => {
   if (msg.type === 'open-options') {
     browser.runtime.openOptionsPage();
+  } else if (msg.type === 'open-viewer') {
+    // 由 background 发起导航（扩展上下文）：网页导航到 chrome-extension:// 页面会被
+    // Chrome 拦截（ERR_BLOCKED_BY_CLIENT），background 的 tabs.create 不受此限制。
+    if (msg.page) {
+      browser.tabs.create({
+        url: browser.runtime.getURL(`viewer.html?page=${encodeURIComponent(msg.page)}`),
+      });
+    }
   } else if (msg.type === 'clip-with-selection') {
     quickCapture(msg.data);
   } else if (msg.type === 'clip-page') {
@@ -158,10 +165,6 @@ browser.contextMenus.onClicked.addListener((info, tab) => {
 browser.runtime.onInstalled.addListener((event) => {
   if (event.reason === 'install') {
     browser.runtime.openOptionsPage();
-  } else if (event.reason === 'update') {
-    if (versionCompare(event.previousVersion!, '1.10.19') < 0) {
-      changeOptionsHostToHostNameAndPort();
-    }
   }
 });
 

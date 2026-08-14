@@ -56,3 +56,10 @@
   background-color: rgba(255, 192, 4, 0.5);
   color: black;
 }
+
+
+/* renderBlock 产出的 [[页面]] 链接：无 href，靠 data-logseq-page 事件委托，保持可点击外观 */
+a.logseq-page-link {
+  @apply no-underline hover:underline cursor-pointer;
+  color: #4f46e5;
+}

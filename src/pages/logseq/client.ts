@@ -1,6 +1,7 @@
 import {
   getLogseqCopliotConfig,
   LogseqCopliotConfig,
+  normalizeLogseqHost,
 } from '../../config';
 
 export type LogseqPageResponse = {
@@ -17,17 +18,13 @@ export type LogseqResponseType<T> = {
 };
 
 /**
- * Build the Logseq HTTP API endpoint from the options page config.
- * The options page edits host name and port as separate fields; the legacy
- * `logseqHost` full URL is kept only as a fallback for old installs.
+ * 从配置构建 Logseq HTTP API 端点（POST /api）。
+ * 用户配置的完整 URL（scheme / host / port）原样保留：
+ * `new URL('/api', base)` 不会改 scheme、不会补默认端口，只追加 `/api`。
+ * 配置非法时抛 TypeError，由调用方（options 页保存时）捕获并提示。
  */
 export const buildApiUrl = (config: LogseqCopliotConfig): URL => {
-  const fallback = new URL(config.logseqHost || 'http://localhost:12315');
-  const host = config.logseqHostName.includes('://')
-    ? new URL(config.logseqHostName).hostname
-    : config.logseqHostName || fallback.hostname;
-  const port = config.logseqPort || fallback.port || '12315';
-  return new URL(`http://${host}:${port}/api`);
+  return new URL('/api', normalizeLogseqHost(config.logseqHost));
 };
 
 export default class LogseqClientBase {

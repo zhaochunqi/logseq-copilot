@@ -19,11 +19,11 @@
 }
 
 .toBlock {
-  @apply no-underline hover:underline min-w-fit;
+  @apply no-underline hover:underline min-w-fit cursor-pointer;
 }
 
 .logseqPageLink {
-  @apply no-underline hover:underline;
+  @apply no-underline hover:underline cursor-pointer;
 }
 
 .pages {
