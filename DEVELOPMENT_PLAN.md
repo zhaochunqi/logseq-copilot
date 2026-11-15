@@ -105,3 +105,22 @@ grep -rE "logseq\.(Editor|Graph)\.(appendBlock|updateBlock|createPage|...)" src 
 - **e2e 依赖真实桌面端**：本 fork 面向 logseq-graph，需要新增「假 logseq-graph HTTP 夹具」才能自动化验证；否则只能单测 mock + 手动冒烟。
 - **别名/幽灵页**：logseq-graph 的 alias 只是拼写、非页面实体，需用 `page_candidates` 解析；tag/幽灵页不可打开。
 - **图片资源**：logseq-graph 不提供 graph 附件静态服务，图片仍无法显示（沿用只读限制）。
+
+## 9. 执行结果（已完成，第二轮独立评审 PASS）
+
+基座：最新 `main`（`8dc0dc5`）→ 分支 `feat/logseq-graph-readonly`。
+
+| 阶段 | 状态 | 说明 |
+| --- | --- | --- |
+| 基座/契约 | ✅ | pnpm12 配置迁移、PageView 类型、计划（`bdfa2d0`） |
+| A1 整页读取 API | ✅ | `getPage`/`getPageBlocksTree`/`getPageSnapshot`/`getPageView`；404/别名/snapshot→tree/属性/renderBlock html |
+| B 前端只读清理 | ✅ | 移除 clip/QuickCapture/contextMenus/命令/标记写 UI；SidebarPanel 保留搜索/高亮/召回 |
+| A2 后端去写 | ✅ | 删除 appendBlock/updateBlock/changeBlockMarker/DB 写；写 RPC grep=0 |
+| C 页内 PageViewer | ✅ | WXT shadow 单例抽屉、`logseq:pageView` 消息、Esc/Back/Refresh、站内导航、块锚点 |
+| D Graph 浏览器 | ✅ | 独立 `graph.html` entrypoint、`logseq:allPages`、列表300/块1500上限、URL 同步、options 入口 |
+| P5 假服务夹具 | ✅ | `tests/support/fake-logseq-graph.ts` + 真实 HTTP 测试（不依赖桌面端） |
+| R2 终审 + 复验 | ✅ | 第一轮 FAIL(B-1) → 修复搜索卡片桌面逃生路径 → 第二轮 PASS（Blocker 0/Major 0） |
+
+**门禁（最终）**：`pnpm typecheck` ✅；`pnpm test` 64 files / **820 tests** ✅；`pnpm build`、`build:firefox`、edge 构建 ✅；`pnpm check:manifest` 三产物 ✅；`src` 写 RPC/写方法 grep=0；三浏览器产物均含 `viewer` 相关能力与 `graph.html`；`logseq://` 仅保留为渲染 href（点击全部由扩展内 opener 拦截，拉桌面端路径已删除）。
+
+**已知后续项（非阻断）**：m-2 clip 死配置/模板 UI 残留（无写 RPC）、n-2 `data-logseq-*` 死分支、app:openPage 的 URL 收紧、连接页对 logseq-graph(`127.0.0.1:8765` + token) 的提示文案。

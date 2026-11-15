@@ -93,3 +93,65 @@ WXT shadow 单例、block→page 消息解析、DOMPurify、属性/深度渲染�
 构建、类型和测试门禁全部通过，A1/C/D/P5 主体实现基本完整；但 **B-1 搜索卡片仍可通过 `logseq:openLink` 将用户带回桌面端**，直接违反本 fork 的核心“整页纯只读、无桌面端交互”目标。修复 B-1（并建议一并处理 m-1/m-2）后再重新评审，未修复前不得合并。
 
 数量：Blocker 1，Major 0，Minor 4，Nit 2。
+
+## 复验（第二轮）
+
+复验基线：HEAD `738fc2b fix(read-only): route search-card links to the in-page viewer; drop desktop escape`。本轮仍只写本报告，未改源码、未 commit。
+
+### B-1 搜索卡片拉起桌面端 — **Resolved**
+
+- `src/entrypoints/content/index.tsx:139-160` 搜索卡片改为传入自定义 opener：解析 `logseq://` 的 `page`/`block-id` 后调用 `openPageViewer`（与 `InPageSidebar.tsx:123-129` 一致），不再走后台导航。
+- `src/utils/logseq-links.ts:39-49` 已无默认 `sendOpenLink`，`open` 为必填参数，监听器只 `preventDefault` 后交给调用方，绝不放行浏览器默认导航。
+- `src/types/messaging.ts` 已删除 `logseq:openLink`；`src/entrypoints/background/index.ts` 已无对应 handler，无 `tabs.update(...logseq://)`。
+- grep 证据：`logseq:openLink` 全仓 0 命中；`sendOpenLink`/`tabs.update.*logseq` 0 命中。已无可达的 `logseq:` 桌面端导航路径（搜索卡片→PageViewer；InPageSidebar→PageViewer；sidepanel→graph.html；options→graph.html；Graph 页对 `logseq:` `preventDefault` 后站内导航）。
+
+### m-1 非 404 错误被伪装成“页面不存在” — **Resolved**
+
+- `src/entrypoints/background/logseq/markdown/service.ts:43-46` 现在仅 404 解析别名，其它错误 `throw error`。
+- `src/entrypoints/background/index.ts:131-140` `logseq:pageView` 不再 try/catch 吞错，错误可回到 PageViewer/GraphBrowser 由 `catch` 展示（`PageViewer.tsx:134-136`）。
+
+### m-3 graph.html 的 WAR 暴露面 — **Resolved**
+
+- `wxt.config.ts` 已移除 `web_accessible_resources` 中的 `graph.html`；三种构建 manifest 的 `web_accessible_resources` 仅剩 `content-scripts/content.css`。
+- 新增 `app:openTab`（`src/types/messaging.ts:48`），后台 `src/entrypoints/background/index.ts:123-129` 校验 `url.startsWith(browser.runtime.getURL('/'))` 后 `tabs.create`，拒绝非本扩展地址；`PageViewer.tsx:46-49` 用之打开 Graph 页。
+- `background.test.ts:249-269` 覆盖允许扩展页、拒绝 `https/http/javascript/chrome/logseq/空/undefined`。安全性提升，暴露面收敛。
+
+### m-4 PageViewer 监听器/历史无界 — **Resolved**
+
+- `src/entrypoints/content/PageViewer.tsx:119-123` history 超过 50 时 `shift()`。
+- `src/entrypoints/content/PageViewer.tsx:61,63-66,167-173` 记录 `detachEscape`，`close()` 时移除 window `keydown`；shadow 内 Escape 监听保留。
+
+### n-1 文案仍声称支持剪藏 — **Resolved**
+
+- `wxt.config.ts:37-38` 与 `package.json:4` 描述已改为只读（page viewer + Graph browser）文案。
+
+### m-2 clip 配置/模板残留 — **仍为 Minor（未处理）**
+
+- `src/utils/storage.ts:437-452,468-531` 的 `clipNote*` 读写、`src/entrypoints/options/pages/template-edit-page.tsx`、`templates-index-page.tsx`、`components/templates-sidebar.tsx`、`src/entrypoints/background/upgrade.ts:58-103`、`src/utils/content-events.ts:20-21`、`src/utils/utils.ts:64-76` 仍在。
+- 判定：**仍为 Minor**。理由：已无 `QuickCapture`/`contextMenus`/`commands.clip`/写 RPC/写消息，残留仅为死配置、迁移与“clip templates”误导 UI，不构成写能力或桌面交互。建议在后续清理提交中删除这些死配置/文案并把 `content-events.ts` 的 `clipFailed` 一并移除，以便 `grep clip` 归零。
+
+### n-2 data-logseq 死分支 — **仍为 Nit（未处理）**
+
+- `src/components/PageViewerPanel.tsx:40-53`、`src/entrypoints/content/PageViewer.tsx:179`、`src/entrypoints/graph/GraphBrowser.tsx:246-251` 仍有 `data-logseq-page/block` 分支，而 `src/entrypoints/background/logseq/tool.ts` 渲染器只输出 `logseq://` href。属维护性冗余，不影响正确性/安全，维持 Nit。
+
+### 新增观察（Nit，不阻断）
+
+- `app:openPage`（`src/entrypoints/background/index.ts:150-160`）仍可对任意 URL 执行 `tabs.update`，当前唯一调用方为 sidepanel 且只传扩展 `graph.html`，不可由网页注入；建议后续与 `app:openTab` 合并为只允许扩展 URL，减少同类逃逸面。
+
+### 门禁（第二轮）
+
+- `pnpm typecheck`：通过。
+- `pnpm test`：通过，64 个 Test Files、820 个 Tests（原 830：移除 `logseq:openLink` 相关用例、新增 `app:openTab` 用例）。
+- `pnpm build`：通过，`.output/chrome-mv3/graph.html` 存在。
+- `pnpm build:firefox`：通过，`.output/firefox-mv3/graph.html` 存在。
+- Edge 构建：通过，`.output/edge-mv3/graph.html` 存在。
+- `pnpm check:manifest`：通过，Chrome/Edge/Firefox 三个产物文件齐全。
+- 只读不变量 grep：写 RPC（appendBlock/updateBlock/changeBlockMarker/insert/remove/move/delete/setBlock/createPage/…/upsert）非测试源码 0 命中；`QuickCapture`/`contextMenus`/`commands.clip` 非测试源码仅 `content-events.ts:20` 注释（m-2 残留）。
+
+## 第二轮最终结论：PASS
+
+- Blocker 0，Major 0。B-1/m-1/m-3/m-4/n-1 均 **Resolved**，全仓无可达 `logseq:` 桌面端导航，只读不变量成立，四项门禁全绿。
+- 剩余未处理项均为非阻断：**Minor m-2**（clip 死配置/模板 UI 残留，建议后续清理使 `grep clip` 归零）、**Nit n-2**（data-logseq 死分支）及新观察（`app:openPage` 收紧为仅扩展 URL）。
+- 合并前必修：无（Minor/Nit 可跟进，不阻断本次合并）。
+
+第二轮数量：Blocker 0，Major 0，Minor 1（m-2 遗留），Nit 2（n-2 + 新观察）。
