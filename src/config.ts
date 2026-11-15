@@ -6,6 +6,7 @@ export type LogseqCopliotConfig = {
   logseqHostName: string;
   logseqPort: number;
   logseqAuthToken: string;
+  pageOpenMode: 'drawer' | 'tab';
 };
 
 export const getLogseqCopliotConfig =
@@ -16,6 +17,7 @@ export const getLogseqCopliotConfig =
       logseqHostName = '127.0.0.1',
       logseqPort = 8765,
       logseqAuthToken = '',
+      pageOpenMode = 'drawer',
     } = await Browser.storage.local.get();
     return {
       version,
@@ -25,6 +27,7 @@ export const getLogseqCopliotConfig =
       logseqHostName,
       logseqPort,
       logseqAuthToken,
+      pageOpenMode,
     };
   };
 

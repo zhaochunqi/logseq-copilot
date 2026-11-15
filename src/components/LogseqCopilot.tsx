@@ -2,6 +2,8 @@ import { IconSettings } from '@tabler/icons-react';
 import React from 'react';
 import styles from './logseq.module.scss';
 import Browser from 'webextension-polyfill';
+import { getLogseqCopliotConfig } from '@/config';
+import { openInlineViewer } from '@pages/content/inlineViewer';
 import { LogseqBlock } from './LogseqBlock';
 import LogseqPageLink from './LogseqPage';
 
@@ -54,13 +56,20 @@ const LogseqCopilot = ({ graph, pages, blocks }) => {
 
   };
 
-  const openViewer = (event: React.MouseEvent<HTMLDivElement>) => {
+  const openViewer = async (event: React.MouseEvent<HTMLDivElement>) => {
     const target = (event.target as HTMLElement).closest('[data-logseq-page], [data-logseq-block]');
     if (!target) return;
     event.preventDefault();
-    const page = target.getAttribute('data-logseq-page');
-    const block = target.getAttribute('data-logseq-block');
-    Browser.runtime.sendMessage({ type: 'open-viewer', ...(page ? { page } : { block }) });
+    const page = target.getAttribute('data-logseq-page') || undefined;
+    const block = target.getAttribute('data-logseq-block') || undefined;
+
+    const config = await getLogseqCopliotConfig();
+    if (config.pageOpenMode === 'tab') {
+      Browser.runtime.sendMessage({ type: 'open-viewer', ...(page ? { page } : { block }) });
+      return;
+    }
+    // Default: render the page in an in-page drawer (read-only).
+    openInlineViewer({ page, block });
   };
 
   return (

@@ -37,6 +37,12 @@ export default function Popup() {
     Browser.runtime.sendMessage({ type: 'open-options' });
   };
 
+  const openGraphBrowser = () => {
+    Browser.tabs
+      .create({ url: Browser.runtime.getURL('graph.html') })
+      .then(() => window.close());
+  };
+
   const openViewer = (event: React.MouseEvent<HTMLDivElement>) => {
     const target = (event.target as HTMLElement).closest('[data-logseq-page], [data-logseq-block]');
     if (!target) return;
@@ -61,6 +67,9 @@ export default function Popup() {
             isPopUp={true}
           />
         ))}
+        <button className={styles.graphButton} onClick={openGraphBrowser}>
+          Browse Graph
+        </button>
       </div>
     </div>
   );

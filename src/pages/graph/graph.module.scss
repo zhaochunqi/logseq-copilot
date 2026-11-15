@@ -1,0 +1,82 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:global(html),
+:global(body),
+:global(#app-container) {
+  width: 100%;
+  height: 100%;
+  min-height: 100%;
+  margin: 0;
+}
+
+:global(body) {
+  @apply bg-white text-gray-900 dark:bg-gray-950 dark:text-gray-100;
+}
+
+.app {
+  display: grid;
+  grid-template-columns: 300px minmax(0, 1fr);
+  width: 100%;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.sidebar {
+  @apply flex flex-col border-r border-gray-200 bg-gray-50 dark:border-gray-800 dark:bg-gray-900;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.brand {
+  @apply border-b border-gray-200 px-4 py-4 dark:border-gray-800;
+}
+
+.brandTitle { @apply text-base font-semibold; }
+.brandMeta { @apply mt-1 text-xs text-gray-500 dark:text-gray-400; }
+.searchArea { @apply border-b border-gray-200 p-3 dark:border-gray-800; }
+.label { @apply mb-1 block text-xs font-semibold text-gray-500 dark:text-gray-400; }
+.input {
+  @apply w-full rounded border border-gray-300 bg-white px-3 py-2 text-sm outline-none focus:border-blue-500 dark:border-gray-700 dark:bg-gray-950;
+  box-sizing: border-box;
+}
+.searchResults { @apply max-h-56 overflow-y-auto border-b border-gray-200 p-2 dark:border-gray-800; }
+.sectionTitle { @apply px-2 py-1 text-xs font-semibold uppercase text-gray-500 dark:text-gray-400; }
+.result, .pageButton, .tagButton {
+  @apply block w-full rounded px-2 py-2 text-left text-sm hover:bg-gray-200 dark:hover:bg-gray-800;
+}
+.resultDetail { @apply mt-1 block truncate text-xs text-gray-500 dark:text-gray-400; }
+.pageList { @apply min-h-0 flex-1 overflow-y-auto p-2; }
+.listNotice { @apply px-2 py-3 text-xs text-gray-500 dark:text-gray-400; }
+.largePageNotice { @apply mb-2 flex items-center justify-between gap-3 rounded border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-100; }
+.pageButton { @apply flex items-center justify-between gap-2; }
+.pageButtonActive { @apply bg-blue-100 text-blue-900 dark:bg-blue-950 dark:text-blue-100; }
+.pageName { @apply min-w-0 truncate; }
+.badge { @apply shrink-0 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-800 dark:bg-amber-900 dark:text-amber-200; }
+.tags { @apply max-h-36 overflow-y-auto border-t border-gray-200 p-2 dark:border-gray-800; }
+.tagButton { @apply py-1 text-xs; }
+.main { @apply min-w-0 overflow-y-auto; }
+.content { max-width: 900px; margin: 0 auto; padding: 32px 40px 64px; }
+.header { @apply mb-6 border-b border-gray-200 pb-5 dark:border-gray-800; }
+.headerActions { @apply mb-4 flex items-center justify-end; }
+.action { @apply rounded border border-gray-300 px-3 py-1.5 text-xs hover:bg-gray-100 dark:border-gray-700 dark:hover:bg-gray-800; }
+.title { @apply text-3xl font-bold; overflow-wrap: anywhere; }
+.metadata { @apply mt-3 flex items-center gap-3 text-sm text-gray-500 dark:text-gray-400; }
+.properties { @apply mb-6 rounded border border-gray-200 dark:border-gray-800; }
+.propertyList { @apply grid grid-cols-1 gap-x-6 gap-y-2 p-4 sm:grid-cols-2; }
+.property { @apply text-sm; overflow-wrap: anywhere; }
+.propertyKey { @apply font-semibold text-gray-600 dark:text-gray-300; }
+.blocks { @apply flex flex-col gap-1; }
+.block { @apply flex items-start gap-2 rounded px-2 py-1; scroll-margin-top: 1rem; }
+.highlight { @apply bg-yellow-100 ring-2 ring-yellow-300 dark:bg-yellow-900/50 dark:ring-yellow-700; }
+.bullet { @apply mt-1 text-gray-400; flex: 0 0 1rem; text-align: center; }
+.blockBody { @apply min-w-0 flex-1; overflow-wrap: anywhere; }
+.blockBody :global(a) { @apply text-blue-700 underline dark:text-blue-300; }
+.state { @apply py-20 text-center text-sm text-gray-500 dark:text-gray-400; }
+.error { @apply text-red-600 dark:text-red-400; }
+
+@media (max-width: 700px) {
+  .app { grid-template-columns: 240px minmax(0, 1fr); }
+  .content { padding: 24px 20px 48px; }
+}

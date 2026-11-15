@@ -6,6 +6,7 @@ import LogseqDBService from './db/service';
 import LogseqService from './normal/service';
 import { LogseqServiceInterface } from './interfaces';
 import { getLogseqCopliotConfig } from '../../config';
+import { escapeHtml, highlightText, safeHref } from './sanitize';
 
 const client = new LogseqClient();
 const logseqServiceDB = new LogseqDBService();
@@ -32,14 +33,22 @@ export const cleanBlock = (block: LogseqBlockType): string => {
     .replaceAll(/^scheduled: <.*?>$/gim, '') // clean schedule
     .replaceAll(/^:logbook:[\S\s]*?:end:$/gim, '') // clean logbook
     .replaceAll(/^:LOGBOOK:[\S\s]*?:END:$/gim, '') // clean logbook
-    .replaceAll(/\$pfts_2lqh>\$(.*?)\$<pfts_2lqh\$/gim, '<em>$1</em>') // clean highlight
+    .replaceAll(/\$pfts_2lqh>\$(.*?)\$<pfts_2lqh\$/gim, '*$1*') // clean highlight (markdown emphasis; raw HTML is escaped)
     .replaceAll(/{{video .*?}}/gm, '')
     .replaceAll(/^\s*?-\s*?$/gim, '')
     .trim();
 };
 
+const escapeRegExp = (value: string) =>
+  value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
 const highlightTokens = (query: string) => {
-  const re = new RegExp(`^(?!<mark>)${query}(?!<\/mark>)`, 'g');
+  // `query` comes from the current tab URL and is untrusted: escape it both as
+  // a regex (so it cannot throw / alter the pattern) and as HTML (so it cannot
+  // inject markup into the `<mark>` it is wrapped in). `token.text` stays
+  // unescaped to avoid double-escaping already-emitted entities.
+  const safeQuery = escapeHtml(query);
+  const re = new RegExp(`^(?!<mark>)${escapeRegExp(query)}(?!<\/mark>)`, 'g');
   return (token) => {
     if (
       token.type !== 'code' &&
@@ -50,14 +59,11 @@ const highlightTokens = (query: string) => {
       token.text
     ) {
       token.text = query
-        ? token.text.replaceAll(re, '<mark>' + query + '</mark>')
+        ? token.text.replaceAll(re, '<mark>' + safeQuery + '</mark>')
         : token.text;
     }
   };
 };
-
-const escapeHtml = (value: string) =>
-  value.replaceAll('&', '&amp;').replaceAll('"', '&quot;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll("'", '&#39;');
 
 const logseqLinkExt = (graph: string, query?: string) => {
   return {
@@ -83,9 +89,10 @@ const logseqLinkExt = (graph: string, query?: string) => {
     renderer: function (token) {
       const { text, href } = token;
 
-      const fillText = query
-        ? text.replaceAll(query, '<mark>' + query + '</mark>')
-        : text;
+      // Escape the display text first, then highlight (the query is escaped
+      // inside highlightText). This closes the XSS hole where `[[page|<img…>]]`
+      // display text was interpolated raw.
+      const fillText = highlightText(escapeHtml(text), query);
       const target = escapeHtml(href);
       return `<a class="logseq-page-link" href="#" data-logseq-page="${target}" title="${target}">${fillText}</a>`;
     },
@@ -178,6 +185,29 @@ export const renderBlock = (
       logseqBlockRefExt(),
       logseqTagExt(),
     ],
+    renderer: {
+      // Disable raw HTML: block/inline HTML from Logseq is shown as text, not executed.
+      html(html: string) {
+        return escapeHtml(html);
+      },
+      link(href: string | null, title: string | null, text: string) {
+        const safe = safeHref(href, 'link');
+        if (!safe) {
+          return text;
+        }
+        const titleAttr = title ? ` title="${escapeHtml(title)}"` : '';
+        return `<a href="${escapeHtml(safe)}"${titleAttr}>${text}</a>`;
+      },
+      image(href: string | null, title: string | null, text: string) {
+        const safe = safeHref(href, 'image');
+        const alt = escapeHtml(text || '');
+        if (!safe) {
+          return alt;
+        }
+        const titleAttr = title ? ` title="${escapeHtml(title)}"` : '';
+        return `<img src="${escapeHtml(safe)}" alt="${alt}"${titleAttr}>`;
+      },
+    },
   });
   const html = marked.parse(cleanContent).trim();
 

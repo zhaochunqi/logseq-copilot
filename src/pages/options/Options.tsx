@@ -1,5 +1,6 @@
-import { Flex, Container, Heading, Text, Link } from '@chakra-ui/react';
+import { Flex, Container, Heading, Text, Link, Divider } from '@chakra-ui/react';
 import { LogseqConnectOptions } from './components/Connect';
+import { OpenModeOptions } from './components/OpenMode';
 import styles from './Options.module.scss';
 
 const Options = () => {
@@ -18,6 +19,10 @@ const Options = () => {
         </Flex>
         <Flex direction={'column'} w={'40rem'} gap={2}>
           <LogseqConnectOptions />
+
+          <Divider />
+
+          <OpenModeOptions />
         </Flex>
       </Flex>
     </Container>

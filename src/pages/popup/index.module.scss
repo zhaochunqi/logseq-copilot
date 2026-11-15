@@ -78,3 +78,7 @@ body {
     @apply text-sm text-center object-center;
   }
 }
+
+.graphButton {
+  @apply mt-1 w-full cursor-pointer rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm hover:bg-gray-100;
+}

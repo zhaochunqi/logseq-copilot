@@ -1,8 +1,19 @@
 @import url(../../icon.css);
-@tailwind base;
 
 .copilot {
   @apply flex flex-col w-full max-w-sm gap-2 pb-4;
+
+  // Scoped box-sizing reset: replaces the global Tailwind Preflight so the
+  // content-script CSS does not restyle the host page.
+  &,
+  * {
+    box-sizing: border-box;
+  }
+
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
 
   ul,
   ol {
