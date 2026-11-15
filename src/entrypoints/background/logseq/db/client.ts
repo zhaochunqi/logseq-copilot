@@ -1,4 +1,4 @@
-import { LogseqBlockType, LogseqPageIdenity } from '@/types/logseqBlock';
+import type { LogseqPageIdenity } from '@/types/logseqBlock';
 
 import { LogseqError, LogseqVersionIsLower, toLogseqError } from '../error';
 import { LogseqClientInterface } from '../interfaces';
@@ -39,14 +39,6 @@ export type LogseqResponseType<T> = {
 export default class LogseqClient extends LogseqClientBase implements LogseqClientInterface {
   private getCurrentGraph = async (): Promise<Graph> => {
     return await this.baseJson('logseq.App.getCurrentGraph', []);
-  };
-
-  public appendBlock = async (page: string, content: string) => {
-    const resp = await this.baseJson('logseq.Editor.appendBlockInPage', [
-      page,
-      content,
-    ]);
-    return resp;
   };
 
   public getCurrentPage = async () => {
@@ -94,10 +86,6 @@ export default class LogseqClient extends LogseqClientBase implements LogseqClie
     opt?: { includeChildren: boolean },
   ) => {
     return await this.baseJson('logseq.Editor.getBlock', [uuid, opt]);
-  };
-
-  public isDBGraph = async () => {
-    return await this.baseJson('logseq.checkCurrentIsDbGraph', []);
   };
 
   private showMsgInternal = async (
@@ -157,25 +145,5 @@ export default class LogseqClient extends LogseqClientBase implements LogseqClie
 
   public getVersion = async (): Promise<LogseqResponseType<string>> => {
     return await this.catchIssues(async () => await this.getVersionInternal());
-  };
-
-  /**
-   * Sets the task status of a DB-graph block. `status` must be the title of one
-   * of the built-in choices (Todo, Doing, Done, ...): Logseq silently clears the
-   * property for any other value.
-   */
-  public setBlockStatus = async (uuid: string, status: string) => {
-    return await this.baseJson('logseq.Editor.upsertBlockProperty', [
-      uuid,
-      'logseq.property/status',
-      status,
-    ]);
-  };
-
-  public updateBlock = async (block: LogseqBlockType) => {
-    return await this.baseJson('logseq.Editor.updateBlock', [
-      block.uuid,
-      block.content,
-    ]);
   };
 }

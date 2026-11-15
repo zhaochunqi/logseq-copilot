@@ -1,5 +1,4 @@
 import {
-  ChangeBlockMarkerResult,
   LogseqBlockType,
   LogseqPageIdenity,
 } from '@/types/logseqBlock';
@@ -15,17 +14,6 @@ import { getBlockMarker } from './status';
 import { mentionsScope, scopePrefixes } from '@/utils/recall-scope';
 
 export { getBlockMarker };
-
-// Marker -> title of the built-in status choice (Backlog, Todo, Doing,
-// In Review, Done, Canceled). Logseq clears the property for unknown titles,
-// so only markers with an exact counterpart are accepted.
-const STATUS_TITLE_BY_MARKER: Record<string, string> = {
-  TODO: 'Todo',
-  DOING: 'Doing',
-  DONE: 'Done',
-  CANCELED: 'Canceled',
-  CANCELLED: 'Canceled',
-};
 
 // Logseq 2.0.x returns `uuid`; older builds nested it as `block/uuid: {uuid}`.
 const getItemUuid = (item: any): string =>
@@ -300,39 +288,5 @@ export default class LogseqDBService implements LogseqServiceInterface {
       query,
       options,
     );
-  }
-
-  public async changeBlockMarker(
-    uuid: string,
-    marker: string,
-  ): Promise<ChangeBlockMarkerResult> {
-    const failed = (msg: string): ChangeBlockMarkerResult => ({
-      type: 'change-block-marker-result',
-      uuid: uuid,
-      status: 'failed',
-      marker: marker,
-      msg: msg,
-    });
-
-    const status = STATUS_TITLE_BY_MARKER[marker.toUpperCase()];
-    if (!status) {
-      return failed(`Not support marker ${marker} on a DB graph.`);
-    }
-    const block = await this.client.getBlockViaUuid(uuid);
-    if (!block) {
-      return failed(`Block ${uuid} not found.`);
-    }
-
-    const result = await this.client.setBlockStatus(uuid, status);
-    // The HTTP API reports failures as a 200 response carrying `{ error }`.
-    if (result && typeof result === 'object' && 'error' in result) {
-      return failed(String(result.error));
-    }
-    return {
-      type: 'change-block-marker-result',
-      uuid: uuid,
-      status: 'success',
-      marker: marker,
-    };
   }
 }

@@ -1,7 +1,7 @@
 /**
  * Service-level behaviour against a stubbed Logseq HTTP API: connection
- * failures must surface as one readable error, and changeBlockMarker must
- * report API errors truthfully. Both graph flavours share these expectations.
+ * failures must surface as one readable error. Both graph flavours share these
+ * expectations.
  */
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { fakeBrowser } from 'wxt/testing';
@@ -73,13 +73,12 @@ describe.each(flavours)('connection failures (%s graph)', (_name, create) => {
     expect((err as Error).message).toBe(unreachable);
   });
 
-  test('search / urlSearch / changeBlockMarker reject with the same message', async () => {
+  test('search / urlSearch reject with the same message', async () => {
     offline();
     const service = create();
     for (const call of [
       () => service.search('x'),
       () => service.urlSearch(new URL('https://example.com/a')),
-      () => service.changeBlockMarker('uuid', 'DONE'),
     ]) {
       const err = await call().catch((e: unknown) => e);
       expect((err as Error).message).toBe(unreachable);
@@ -119,54 +118,6 @@ describe.each(flavours)('connection failures (%s graph)', (_name, create) => {
     const err = await create().search('x').catch((e: unknown) => e);
     expect(err).toBeInstanceOf(Error);
     expect((err as Error).message).toBe(LogseqVersionIsLower.msg);
-  });
-});
-
-// DB graphs keep the task state in a property; see db/service.test.ts.
-describe('changeBlockMarker (file graph)', () => {
-  const create = () => new LogseqService();
-  const block = (content: string, marker = 'TODO') => ({
-    uuid: 'u1',
-    content,
-    marker,
-    page: { id: 1 },
-  });
-
-  const api = (opts: { content: string; update?: unknown }) => {
-    const updates: unknown[][] = [];
-    stubApi((method, args) => {
-      if (method.endsWith('getCurrentGraph')) return { name: 'g', path: '/g' };
-      if (method === 'logseq.Editor.getBlock') return block(opts.content);
-      if (method === 'logseq.Editor.getPage')
-        return { id: 1, name: 'p', uuid: 'p1' };
-      if (method === 'logseq.Editor.updateBlock') {
-        updates.push(args);
-        return opts.update ?? null;
-      }
-      return null;
-    });
-    return updates;
-  };
-
-  test('replaces the marker and reports success', async () => {
-    const updates = api({ content: 'TODO write tests' });
-    const result = await create().changeBlockMarker('u1', 'DONE');
-    expect(result).toMatchObject({ status: 'success', marker: 'DONE' });
-    expect(updates).toEqual([['u1', 'DONE write tests']]);
-  });
-
-  test('reports failed when the API answers with an error object', async () => {
-    api({ content: 'TODO write tests', update: { error: 'boom' } });
-    const result = await create().changeBlockMarker('u1', 'DONE');
-    expect(result.status).toBe('failed');
-    expect(result.msg).toBeTruthy();
-  });
-
-  test('refuses scheduled blocks without calling updateBlock', async () => {
-    const updates = api({ content: 'TODO x\nSCHEDULED: <2024-01-01 Mon>' });
-    const result = await create().changeBlockMarker('u1', 'DONE');
-    expect(result.status).toBe('failed');
-    expect(updates).toEqual([]);
   });
 });
 

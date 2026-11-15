@@ -1,5 +1,4 @@
 import {
-  ChangeBlockMarkerResult,
   LogseqBlockType,
   PageView,
   PageBlock,
@@ -8,7 +7,6 @@ import LogseqClient from './client';
 import { renderBlock, resolveBlockRefs } from '../tool';
 import { LogseqServiceInterface } from '../interfaces';
 import { throwIfClientError } from '../error';
-import log from '@/utils/logger';
 import type { RecallResult } from '@/types/recall';
 import { recall, type RecallOptions } from '../recall/recall';
 import { FileRecallSource } from '../recall/file-source';
@@ -213,43 +211,5 @@ export default class LogseqService implements LogseqServiceInterface {
       query,
       options,
     );
-  }
-
-  public async changeBlockMarker(
-    uuid: string,
-    marker: string,
-  ): Promise<ChangeBlockMarkerResult> {
-    const graph = await this.getGraph();
-    const block = await this.getBlock(uuid, graph);
-
-    if (block.content.includes('SCHEDULED:')) {
-      return {
-        type: 'change-block-marker-result',
-        uuid: uuid,
-        status: 'failed',
-        marker: marker,
-        msg: 'Not support scheduled task.',
-      };
-    }
-    block.content = block.content.replace(block.marker, marker);
-
-    const result = await this.client.updateBlock(block);
-    log.debug(result);
-    // The HTTP API reports failures as a 200 response carrying `{ error }`.
-    if (result && typeof result === 'object' && 'error' in result) {
-      return {
-        type: 'change-block-marker-result',
-        uuid: uuid,
-        status: 'failed',
-        marker: marker,
-        msg: String(result.error),
-      };
-    }
-    return {
-      type: 'change-block-marker-result',
-      uuid: uuid,
-      status: 'success',
-      marker: marker,
-    };
   }
 }

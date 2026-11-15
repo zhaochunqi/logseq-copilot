@@ -26,7 +26,6 @@ const service = vi.hoisted(() => ({
   urlSearch: vi.fn(),
   client: {
     getUserConfig: vi.fn(),
-    appendBlock: vi.fn(),
   },
 }));
 

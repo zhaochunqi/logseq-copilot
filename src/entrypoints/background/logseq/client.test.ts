@@ -28,6 +28,19 @@ describe('escapeQueryString', () => {
 describe.each([
   ['markdown', MarkdownClient],
   ['db', DBClient],
+])('%s client isDBGraph()', (_name, Client) => {
+  test('uses the base graph-type check', async () => {
+    const client = new Client();
+    const spy = vi.fn().mockResolvedValue(false);
+    client.baseJson = spy;
+    await client.isDBGraph();
+    expect(spy).toHaveBeenCalledWith('logseq.App.checkCurrentIsDBGraph', []);
+  });
+});
+
+describe.each([
+  ['markdown', MarkdownClient],
+  ['db', DBClient],
 ])('%s client find()', (_name, Client) => {
   test('escapes quotes in the query string', async () => {
     const client = new Client();
