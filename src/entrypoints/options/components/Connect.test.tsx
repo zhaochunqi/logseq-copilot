@@ -3,8 +3,7 @@
  *
  * - Editing host/port/token must not hit Logseq once per keystroke, and an
  *   automatic check must not call showMsg (it pops a toast in Logseq).
- * - "Connect" tests the connection, keeps the user on the options page and
- *   offers an explicit "Open in Logseq" link instead of navigating away.
+ * - "Connect" tests the connection and keeps the user on the options page.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
@@ -15,7 +14,6 @@ import type { LogseqCopliotConfig } from '@/utils/storage';
 const service = vi.hoisted(() => ({
   showMsg: vi.fn(),
   getVersion: vi.fn(),
-  getGraph: vi.fn(),
 }));
 const initial = vi.hoisted(() => ({
   config: {} as Record<string, unknown>,
@@ -70,7 +68,6 @@ describe('LogseqConnectOptions', () => {
     vi.useFakeTimers();
     service.showMsg.mockReset().mockResolvedValue({ status: 200, msg: 'success' });
     service.getVersion.mockReset().mockResolvedValue('0.10.9');
-    service.getGraph.mockReset().mockResolvedValue('my graph');
     initial.config = config({ logseqAuthToken: 'token' });
   });
 
@@ -153,10 +150,9 @@ describe('LogseqConnectOptions', () => {
     expect(screen.getByRole('status').textContent).toMatch(/saved/i);
   });
 
-  it('offers an explicit link to open the graph in Logseq', async () => {
+  it('opens the standalone Graph browser from the options page', async () => {
     await mount();
-
-    const link = screen.getByRole('link', { name: /Open .* in Logseq/ });
-    expect(link.getAttribute('href')).toBe('logseq://graph/my graph');
+    expect(screen.getByRole('button', { name: 'Open Graph Browser' })).toBeTruthy();
+    expect(screen.queryByText(/Open .* in Logseq/)).toBeNull();
   });
 });

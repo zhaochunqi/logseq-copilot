@@ -4,7 +4,11 @@ import {
   type GetDataType,
   type GetReturnType,
 } from '@webext-core/messaging';
-import type { LogseqSearchResult, PageView } from './logseqBlock';
+import type {
+  LogseqPageEntry,
+  LogseqSearchResult,
+  PageView,
+} from './logseqBlock';
 import { LogseqResponseType } from '@/entrypoints/background/logseq/client';
 import type { RecallResult } from './recall';
 
@@ -15,6 +19,9 @@ export interface MessagingProtocol {
 
   /** Whole page read for the in-page PageViewer, by page name or block UUID. */
   'logseq:pageView': (data: { page?: string; block?: string }) => PageView | null;
+
+  /** All pages in the connected graph, for the standalone read-only browser. */
+  'logseq:allPages': () => LogseqPageEntry[];
 
   /** The recall rules matching `url` decide how far up its path to search. */
   'logseq:urlSearch': (data: {

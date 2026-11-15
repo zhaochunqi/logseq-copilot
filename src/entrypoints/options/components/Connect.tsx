@@ -2,6 +2,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import React, { useEffect } from 'react';
+import { browser } from 'wxt/browser';
 import { log } from '@/utils';
 import { useSettings } from '@/hooks/use-settings';
 import { getLogseqService } from '@/entrypoints/background/logseq/tool';
@@ -39,7 +40,6 @@ export const LogseqConnectOptions = () => {
   const [notice, setNotice] = React.useState('');
   // Why the last check failed. Shown under the button, which cannot wrap.
   const [error, setError] = React.useState('');
-  const [graph, setGraph] = React.useState<string | null>(null);
   const [showToken, setShowToken] = React.useState(false);
   // Only the newest check may update the state; older ones are stale.
   const latestCheck = React.useRef(0);
@@ -84,25 +84,21 @@ export const LogseqConnectOptions = () => {
         if (resp.msg !== 'success') {
           if (isStale()) return false;
           setConnected(false);
-          setGraph(null);
           setButtonMessage('Connect');
           setError(resp.msg || 'Connection failed');
           return false;
         }
       }
       const version = await service.getVersion();
-      const graphName: string | null = await service.getGraph().catch(() => null);
       if (isStale()) return false;
       setConnected(true);
       setError('');
-      setGraph(graphName || null);
       setButtonMessage(`Connected to Logseq v${version}!`);
       return true;
     } catch (err) {
       log.error('Connection check failed:', err);
       if (isStale()) return false;
       setConnected(false);
-      setGraph(null);
       setButtonMessage('Connect');
       setError(
         err instanceof Error && err.message ? err.message : 'Connection failed',
@@ -155,7 +151,6 @@ export const LogseqConnectOptions = () => {
       latestCheck.current++; // drop a check that is still running
       setLoading(false);
       setConnected(false);
-      setGraph(null);
       setError('');
       // Nothing is wrong with an empty token yet; the user has not started.
       setButtonMessage(logseqAuthToken ? invalid : 'Connect');
@@ -228,14 +223,17 @@ export const LogseqConnectOptions = () => {
           <Button onClick={save} variant="outline" disabled={loading}>
             {loading ? 'Connecting...' : buttonMessage}
           </Button>
-          {connected && graph && (
-            <a
-              className="text-sm text-primary hover:underline"
-              href={`logseq://graph/${graph}`}
-            >
-              Open {graph} in Logseq
-            </a>
-          )}
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() =>
+              void browser.tabs.create({
+                url: browser.runtime.getURL('/graph.html' as any),
+              })
+            }
+          >
+            Open Graph Browser
+          </Button>
           <a
             className={`text-sm hover:underline sm:ml-auto ${!connected ? 'text-destructive' : 'text-primary'}`}
             href="https://logseq-copilot.eindex.me/doc/setup"

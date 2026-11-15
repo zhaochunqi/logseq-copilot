@@ -51,6 +51,30 @@ export default defineBackground({
       }
     });
 
+    onMessage('logseq:allPages', async () => {
+      try {
+        const service = await getLogseqService();
+        const raw = await service.client.getAllPages();
+        let result: any = raw;
+        if (typeof result === 'string') {
+          try {
+            result = JSON.parse(result);
+          } catch {
+            return [];
+          }
+        }
+        const pages = Array.isArray(result?.pages)
+          ? result.pages
+          : Array.isArray(result?.response?.pages)
+          ? result.response.pages
+          : [];
+        return pages.filter((page: any) => typeof page?.name === 'string');
+      } catch (error) {
+        log.warn('[background] Failed to read all pages:', error);
+        return [];
+      }
+    });
+
     onMessage('logseq:search', async ({ data }) => {
       const logseqService = await getLogseqService();
       const searchRes = await logseqService.search(data);
