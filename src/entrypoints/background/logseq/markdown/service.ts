@@ -1,4 +1,9 @@
-import { ChangeBlockMarkerResult, LogseqBlockType } from '@/types/logseqBlock';
+import {
+  ChangeBlockMarkerResult,
+  LogseqBlockType,
+  PageView,
+  PageBlock,
+} from '@/types/logseqBlock';
 import LogseqClient from './client';
 import { renderBlock, resolveBlockRefs } from '../tool';
 import { LogseqServiceInterface } from '../interfaces';
@@ -26,6 +31,55 @@ export default class LogseqService implements LogseqServiceInterface {
 
   public async showMsg(message: string) {
     return await this.client.showMsg(message);
+  }
+
+  public async getPageView(name: string): Promise<PageView | null> {
+    const seen = new Set<string>();
+    let current = name;
+    let meta: any;
+    while (!seen.has(current)) {
+      seen.add(current);
+      try {
+        meta = await this.client.getPage(current);
+        break;
+      } catch (error: any) {
+        if (error?.status !== 404) return null;
+        const result: any = await this.client.search(current).catch(() => null);
+        const candidates = result?.page_candidates ?? [];
+        const candidate = candidates.find(
+          (entry: any) =>
+            entry?.via === 'alias' &&
+            typeof entry.alias === 'string' &&
+            entry.alias.toLowerCase() === current.toLowerCase() &&
+            typeof entry.name === 'string',
+        );
+        if (!candidate || seen.has(candidate.name)) return null;
+        current = candidate.name;
+      }
+    }
+    if (!meta) return null;
+    const snapshot = await this.client.getPageSnapshot(current);
+    let blocks: PageBlock[];
+    if (snapshot?.exists) blocks = snapshot.blocks ?? [];
+    else blocks = (await this.client.getPageBlocksTree(current))?.blocks ?? [];
+    const graph = await this.getGraph();
+    blocks = blocks.map((block) => {
+      const renderable: any = {
+        content: block.text ?? '',
+        marker: block.marker ?? '',
+        priority: '',
+        page: { name: current, uuid: '', id: 0 },
+      };
+      const rendered = renderBlock(renderable, graph);
+      return { ...block, html: rendered.html };
+    });
+    return {
+      name: meta.name ?? current,
+      originalName: meta.originalName ?? meta.name ?? current,
+      journal: !!meta['journal?'],
+      properties: snapshot?.properties ?? meta.properties ?? [],
+      blocks,
+    };
   }
 
   public async getVersion() {

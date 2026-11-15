@@ -1,4 +1,5 @@
 import { LogseqBlockType, LogseqPageIdenity } from '@/types/logseqBlock';
+import type { PageBlock } from '@/types/logseqBlock';
 
 import { LogseqError, LogseqVersionIsLower, toLogseqError } from '../error';
 import LogseqClientBase, { escapeQueryString } from '../client';
@@ -23,10 +24,17 @@ type LogseqSearchResponse = {
   pages: string[];
 };
 
-export type LogseqPageResponse = {
-  name: string;
-  uuid: string;
+export type LogseqPageResponse = LogseqPageIdenity & {
   'journal?': boolean;
+  originalName?: string;
+  properties?: { key: string; value: string }[];
+};
+
+export type PageBlocksResponse = { blocks: PageBlock[] };
+export type PageSnapshotResponse = {
+  exists?: boolean;
+  blocks: PageBlock[];
+  properties?: { key: string; value: string }[];
 };
 
 export type LogseqResponseType<T> = {
@@ -63,13 +71,35 @@ export default class LogseqClient
   };
 
   public getPage = async (
-    pageIdenity: Partial<LogseqPageIdenity>,
-  ): Promise<LogseqPageIdenity> => {
-    const resp: LogseqPageIdenity = await this.baseJson(
-      'logseq.Editor.getPage',
-      [pageIdenity.id || pageIdenity.uuid || pageIdenity.name],
-    );
-    return resp;
+    pageIdentity: string | Partial<LogseqPageIdenity>,
+  ): Promise<LogseqPageResponse> => {
+    const identity =
+      typeof pageIdentity === 'string' ? { name: pageIdentity } : pageIdentity;
+    const payload =
+      identity.id !== undefined
+        ? { id: identity.id }
+        : identity.uuid
+        ? { uuid: identity.uuid }
+        : { name: identity.name };
+    return await this.baseJson('logseq.Editor.getPage', [payload]);
+  };
+
+  public getPageBlocksTree = async (
+    name: string,
+  ): Promise<PageBlocksResponse> =>
+    await this.baseJson('logseq.Editor.getPageBlocksTree', [name]);
+
+  public getPageSnapshot = async (
+    name: string,
+  ): Promise<PageSnapshotResponse | null> => {
+    try {
+      const snapshot = await this.baseJson('logseq.Graph.getPageSnapshot', [
+        name,
+      ]);
+      return snapshot?.error ? null : snapshot;
+    } catch {
+      return null;
+    }
   };
 
   public getPageDB = async (
