@@ -4,10 +4,9 @@ import {
   type GetDataType,
   type GetReturnType,
 } from '@webext-core/messaging';
-import { ChangeBlockMarkerResult, LogseqSearchResult } from './logseqBlock';
+import { LogseqSearchResult } from './logseqBlock';
 import { LogseqResponseType } from '@/entrypoints/background/logseq/client';
 import type { RecallResult } from './recall';
-import type { ClipCommandOptions } from '@/utils/clip-feedback';
 
 // Define all message types for cross-context communication
 export interface MessagingProtocol {
@@ -27,22 +26,6 @@ export interface MessagingProtocol {
    */
   'logseq:recall': (data: { query: string; url: string }) => RecallResult;
 
-  /** Rejects with a readable message (LogseqError) when nothing was clipped. */
-  'logseq:clipWithSelection': (data: string) => void;
-
-  /**
-   * Clips the link of the page in tab `tabId` or, without one, in the active
-   * tab of the current window. Senders without a tab of their own (the
-   * browser sidebar) name the tab. Rejects with a readable message
-   * (LogseqError) when nothing was clipped.
-   */
-  'logseq:clipPage': (data?: { tabId?: number }) => void;
-
-  'logseq:changeBlockMarker': (data: {
-    uuid: string;
-    marker: string;
-  }) => ChangeBlockMarkerResult;
-
   'app:openOptions': () => void;
 
   'app:openPage': (data: { url: string }) => void;
@@ -53,17 +36,6 @@ export interface MessagingProtocol {
    * sender tab.
    */
   'logseq:openLink': (data: { url: string }) => void;
-
-  // Content script messages. Clip commands resolve once the clip is done; for
-  // failures see ClipCommandOptions.
-  'content:quickCapture': (data?: ClipCommandOptions) => void;
-
-  'content:quickCaptureWithSelection': (data?: ClipCommandOptions) => void;
-
-  'content:quickCapturePage': (data?: ClipCommandOptions) => void;
-
-  /** Whether the page has a selection that `quickCaptureWithSelection` would clip. */
-  'content:hasSelection': () => boolean;
 
   /**
    * Sent by the browser sidebar to one tab: scroll the highlight to the middle

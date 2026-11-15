@@ -1,24 +1,19 @@
 // @vitest-environment jsdom
 /**
- * Drives LogseqBlock's TODO/DONE controls through real webext-core messaging
- * (fakeBrowser). The component uses the same sendMessage in the content script
- * and in the browser sidebar, so one context covers both.
+ * Drives LogseqBlock's read-only rendering: a block's task marker is drawn as
+ * a label, never as a control that would write back to Logseq.
  */
-import { afterEach, beforeAll, describe, expect, test, vi } from 'vitest';
+import { afterEach, beforeAll, describe, expect, test } from 'vitest';
 import { act } from 'react';
 import { createRoot, Root } from 'react-dom/client';
 import { fakeBrowser } from 'wxt/testing/fake-browser';
-import { onMessage } from '@/types/messaging';
 import { LogseqBlock } from './LogseqBlock';
 import type { LogseqBlockType } from '@/types/logseqBlock';
 
 (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
 
-const handler = vi.fn();
-
 beforeAll(() => {
   fakeBrowser.reset();
-  onMessage('logseq:changeBlockMarker', ({ data }) => handler(data));
 });
 
 const makeBlock = (uuid: string, marker: string): LogseqBlockType => ({
@@ -44,121 +39,38 @@ const render = async (blocks: LogseqBlockType[]) => {
   return container;
 };
 
-const flush = () => act(async () => {
-  await new Promise((r) => setTimeout(r, 20));
-});
-
 afterEach(async () => {
   await act(async () => root?.unmount());
   container?.remove();
-  handler.mockReset();
 });
 
-const reply = (uuid: string, marker: string) => ({
-  type: 'change-block-marker-result' as const,
-  uuid,
-  status: 'success' as const,
-  marker,
-});
-
-describe('LogseqBlock marker controls', () => {
-  test('checking the box sends TODO->DONE through the background and shows DONE', async () => {
-    handler.mockImplementation(({ uuid, marker }) => reply(uuid, marker));
+describe('LogseqBlock marker rendering', () => {
+  test('draws a task marker as a plain label, with no checkbox to change it', async () => {
     const el = await render([makeBlock('b1', 'TODO')]);
 
-    const checkbox = el.querySelector('button[role="checkbox"]') as HTMLElement;
-    expect(checkbox.getAttribute('aria-checked')).toBe('false');
-
-    await act(async () => checkbox.click());
-    await flush();
-
-    expect(handler).toHaveBeenCalledWith({ uuid: 'b1', marker: 'DONE' });
-    // Like Logseq, DONE is a checked box and struck-through text, no label.
-    expect(el.querySelector('[data-marker]')!.getAttribute('data-marker')).toBe('DONE');
-    expect(
-      el.querySelector('button[role="checkbox"]')!.getAttribute('aria-checked'),
-    ).toBe('true');
+    expect(el.querySelector('button[role="checkbox"]')).toBeNull();
+    expect(el.querySelector('input[type="checkbox"]')).toBeNull();
+    expect(el.querySelector('[data-marker]')!.getAttribute('data-marker')).toBe('TODO');
+    expect(el.querySelector('.lc-status')!.textContent).toBe('TODO');
+    // The only button-like control left is the "Open block in Logseq" link.
+    const buttons = Array.from(el.querySelectorAll('button'));
+    expect(buttons.some((b) => b.textContent === 'TODO')).toBe(false);
+    expect(el.querySelector('.lc-marker')).toBeNull();
   });
 
-  test('unchecking goes back to TODO', async () => {
-    handler.mockImplementation(({ uuid, marker }) => reply(uuid, marker));
+  test('draws DONE as a label too, never a checked box', async () => {
     const el = await render([makeBlock('b2', 'DONE')]);
 
-    await act(async () =>
-      (el.querySelector('button[role="checkbox"]') as HTMLElement).click(),
-    );
-    await flush();
-
-    expect(handler).toHaveBeenCalledWith({ uuid: 'b2', marker: 'TODO' });
-    expect(el.querySelector('[data-marker]')!.getAttribute('data-marker')).toBe('TODO');
-    expect(
-      el.querySelector('button[role="checkbox"]')!.getAttribute('aria-checked'),
-    ).toBe('false');
+    expect(el.querySelector('button[role="checkbox"]')).toBeNull();
+    expect(el.querySelector('[data-marker]')!.getAttribute('data-marker')).toBe('DONE');
+    expect(el.querySelector('.lc-status')!.textContent).toBe('DONE');
   });
 
-  test('a failed change keeps the old status and shows the reason', async () => {
-    handler.mockImplementation(({ uuid, marker }) => ({
-      type: 'change-block-marker-result',
-      uuid,
-      status: 'failed',
-      marker,
-      msg: 'Not support scheduled task.',
-    }));
-    const el = await render([makeBlock('b3', 'TODO')]);
+  test('renders a block without a marker with no task label', async () => {
+    const el = await render([makeBlock('b3', '')]);
 
-    await act(async () =>
-      (el.querySelector('button[role="checkbox"]') as HTMLElement).click(),
-    );
-    await flush();
-
-    expect(el.querySelector('[data-marker]')!.getAttribute('data-marker')).toBe('TODO');
-    expect(
-      el.querySelector('button[role="checkbox"]')!.getAttribute('aria-checked'),
-    ).toBe('false');
-    expect(el.querySelector('[role="alert"]')?.textContent).toBe(
-      'Not support scheduled task.',
-    );
-  });
-
-  test('a rejected message shows the readable error', async () => {
-    handler.mockRejectedValue(new Error('Cannot connect to Logseq'));
-    const el = await render([makeBlock('b4', 'TODO')]);
-
-    await act(async () =>
-      (el.querySelector('button[role="checkbox"]') as HTMLElement).click(),
-    );
-    await flush();
-
-    expect(el.querySelector('[role="alert"]')?.textContent).toBe(
-      'Cannot connect to Logseq',
-    );
-  });
-
-  test('each block in a group changes only itself', async () => {
-    handler.mockImplementation(({ uuid, marker }) => reply(uuid, marker));
-    const el = await render([makeBlock('a', 'TODO'), makeBlock('b', 'DOING')]);
-
-    const boxes = el.querySelectorAll('button[role="checkbox"]');
-    await act(async () => (boxes[1] as HTMLElement).click());
-    await flush();
-
-    expect(handler).toHaveBeenCalledWith({ uuid: 'b', marker: 'DONE' });
-    const rows = el.querySelectorAll('[data-marker]');
-    expect(rows[0].getAttribute('data-marker')).toBe('TODO');
-    expect(rows[1].getAttribute('data-marker')).toBe('DONE');
-  });
-
-  test('the status badge toggles DOING to TODO', async () => {
-    handler.mockImplementation(({ uuid, marker }) => reply(uuid, marker));
-    const el = await render([makeBlock('c', 'DOING')]);
-
-    const badge = () =>
-      Array.from(el.querySelectorAll('button')).find(
-        (b) => b.getAttribute('role') !== 'checkbox' && b.textContent === 'DOING',
-      ) as HTMLElement;
-    await act(async () => badge().click());
-    await flush();
-    expect(handler).toHaveBeenCalledWith({ uuid: 'c', marker: 'TODO' });
+    expect(el.querySelector('.lc-status')).toBeNull();
+    expect(el.querySelector('.lc-task')).toBeNull();
   });
 });
 

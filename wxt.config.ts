@@ -44,19 +44,12 @@ export default defineConfig({
     permissions: [
       'storage',
       'activeTab',
-      'contextMenus',
       // The E2E tests read the content scripts' coverage counters with
       // scripting.executeScript (tests/e2e/coverage.ts).
       ...(e2eCoverage ? ['scripting'] : []),
     ],
     host_permissions: ['<all_urls>'],
     commands: {
-      clip: {
-        suggested_key: {
-          default: 'Ctrl+Shift+U',
-        },
-        description: 'Make Clip note',
-      },
       // No default shortcut: any combination can clash with the browser's own
       // or another extension's. Users bind their own in the browser's shortcut
       // settings.

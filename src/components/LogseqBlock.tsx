@@ -1,9 +1,7 @@
-import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import * as CheckboxPrimitive from '@radix-ui/react-checkbox';
-import { IconArrowUpRight, IconCheck } from '@tabler/icons-react';
+import React, { useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { IconArrowUpRight } from '@tabler/icons-react';
 import { LogseqBlockType } from '@/types/logseqBlock';
 import LogseqPageLink from './LogseqPage';
-import { sendMessage } from '@/types/messaging';
 import { blockUrl, pageUrl } from '@/utils/logseq-url';
 import { sanitizeHtml } from '@/utils/sanitize-html';
 import './logseq-results.css';
@@ -12,79 +10,6 @@ type LogseqBlockProps = {
   graph: string;
   blocks: LogseqBlockType[];
 };
-
-/** Markers Logseq draws an unchecked / checked box for (block-checkbox). */
-const OPEN_MARKERS = ['TODO', 'DOING', 'LATER', 'NOW', 'IN-PROGRESS', 'WAIT', 'WAITING'];
-const CHECKED_MARKERS = ['DONE'];
-const CANCELED_MARKERS = ['CANCELED', 'CANCELLED'];
-
-// Logseq's marker switch toggles between the "started" and "not started"
-// state of a task; other markers have no such counterpart.
-const NEXT_MARKER: Record<string, string> = {
-  TODO: 'DOING',
-  DOING: 'TODO',
-  NOW: 'LATER',
-  LATER: 'NOW',
-};
-/** Markers whose label stays in front of the text (in-progress styling). */
-const SHOWN_MARKERS = ['DOING', 'NOW'];
-
-/** A task's marker and its changes, sent through the background. */
-const useTaskMarker = (uuid: string, marker: string) => {
-  const [status, setStatus] = useState(marker);
-  const [pending, setPending] = useState(false);
-  const [error, setError] = useState('');
-
-  useEffect(() => {
-    setStatus(marker);
-    setError('');
-  }, [marker, uuid]);
-
-  const update = async (newMarker: string | undefined) => {
-    if (!newMarker || pending) return;
-    setPending(true);
-    setError('');
-    try {
-      const result = await sendMessage('logseq:changeBlockMarker', {
-        uuid,
-        marker: newMarker,
-      });
-      if (result.status === 'success') {
-        setStatus(result.marker);
-      } else {
-        setError(result.msg || 'Failed to change the task status.');
-      }
-    } catch (err) {
-      setError(
-        err instanceof Error ? err.message : 'Failed to change the task status.',
-      );
-    } finally {
-      setPending(false);
-    }
-  };
-
-  return { status, pending, error, update };
-};
-
-const MarkerSwitch = ({
-  status,
-  pending,
-  onSwitch,
-}: {
-  status: string;
-  pending: boolean;
-  onSwitch: () => void;
-}) => (
-  <button
-    type="button"
-    className="lc-marker"
-    disabled={pending}
-    title={`Change from ${status} to ${NEXT_MARKER[status]}`}
-    onClick={onSwitch}
-  >
-    {status}
-  </button>
-);
 
 /**
  * Folds content taller than seven lines behind "Show more". The height is
@@ -131,8 +56,8 @@ const Foldable = ({ children }: { children: React.ReactNode }) => {
 };
 
 /**
- * One result block, drawn like a block in Logseq: a bullet, the task
- * checkbox and marker in front of the text, the text folded when long.
+ * One result block, drawn like a block in Logseq: a bullet and marker
+ * in front of the text, the text folded when long.
  * `children` are nested result blocks (indented under this one).
  */
 export const LogseqBlockRow = ({
@@ -144,13 +69,8 @@ export const LogseqBlockRow = ({
   block: LogseqBlockType;
   children?: React.ReactNode;
 }) => {
-  const { status, pending, error, update } = useTaskMarker(block.uuid, block.marker ?? '');
-  const isOpen = OPEN_MARKERS.includes(status);
-  const isChecked = CHECKED_MARKERS.includes(status);
-  const hasCheckbox = isOpen || isChecked;
-  const canSwitch = !!NEXT_MARKER[status];
-  const showMarker = SHOWN_MARKERS.includes(status);
-  const hasStatusLabel = !!status && !hasCheckbox && !CANCELED_MARKERS.includes(status);
+  const status = block.marker ?? '';
+  const hasStatusLabel = !!status;
   // The block's Markdown may hold raw HTML (a clipped page, ...), and the
   // sidebar on pages draws this in the page's own document.
   const html = useMemo(() => sanitizeHtml(block.html), [block.html]);
@@ -159,25 +79,9 @@ export const LogseqBlockRow = ({
     <li>
       <div className="lc-block-row" data-marker={status || undefined}>
         <Foldable>
-          {(hasCheckbox || hasStatusLabel || showMarker) && (
+          {hasStatusLabel && (
             <span className="lc-task">
-              {hasCheckbox && (
-                <CheckboxPrimitive.Root
-                  className="lc-checkbox"
-                  checked={isChecked}
-                  disabled={pending}
-                  aria-label={isChecked ? `Mark as TODO` : `Mark as DONE`}
-                  onCheckedChange={(checked) => update(checked === true ? 'DONE' : 'TODO')}
-                >
-                  <CheckboxPrimitive.Indicator>
-                    <IconCheck stroke={3} />
-                  </CheckboxPrimitive.Indicator>
-                </CheckboxPrimitive.Root>
-              )}
-              {showMarker && (
-                <MarkerSwitch status={status} pending={pending} onSwitch={() => update(NEXT_MARKER[status])} />
-              )}
-              {hasStatusLabel && <span className="lc-status">{status}</span>}
+              <span className="lc-status">{status}</span>
             </span>
           )}
           <div className="lc-content" dangerouslySetInnerHTML={{ __html: html }} />
@@ -191,15 +95,7 @@ export const LogseqBlockRow = ({
             </div>
           )}
         </Foldable>
-        {error && (
-          <span role="alert" className="lc-task-error">
-            {error}
-          </span>
-        )}
         <div className="lc-actions">
-          {canSwitch && !showMarker && (
-            <MarkerSwitch status={status} pending={pending} onSwitch={() => update(NEXT_MARKER[status])} />
-          )}
           {block.uuid && (
             <a
               className="lc-button lc-icon-button"

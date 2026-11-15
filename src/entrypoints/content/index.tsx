@@ -1,4 +1,3 @@
-import { getLogseqCopliotConfig } from '@/config';
 import { fixDuckDuckGoDark } from '@/utils';
 import { searchEngineConfig } from '@/utils/storage';
 import { createRoot } from 'react-dom/client';
@@ -6,10 +5,6 @@ import { browser } from 'wxt/browser';
 import { LogseqCopliot } from './LogseqCopliot';
 import { startInPageSidebar } from './InPageSidebar';
 import { detectArc } from './arc-detection';
-import mountQuickCapture, {
-  hasClippableSelection,
-  runClipCommand,
-} from './QuickCapture';
 import { CustomSearchEngine } from './searchingEngines/searchingEngines';
 import { keepOnPage } from './searchingEngines/keep-on-page';
 import { onMessage } from '@/types/messaging';
@@ -46,24 +41,6 @@ export default defineContentScript({
     // before this point, so a shortcut pressed while the page is still
     // starting up (or restoring highlights) is never dropped.
     // Setup message listeners for background script communication
-    // Clip commands: the clip shortcut and the context menu (from the
-    // background), "Clip selection" (from the browser sidebar).
-    onMessage('content:quickCapture', ({ data }) =>
-      runClipCommand('selectionOrPage', data),
-    );
-
-    onMessage('content:quickCaptureWithSelection', ({ data }) =>
-      runClipCommand('selectionOrPage', data),
-    );
-
-    onMessage('content:quickCapturePage', ({ data }) =>
-      runClipCommand('page', data),
-    );
-
-    // From the browser sidebar: it offers "Clip selection" only when there is
-    // one.
-    onMessage('content:hasSelection', () => hasClippableSelection());
-
     // From the browser sidebar: scroll to a highlight of this page. The
     // manager waits for the restore itself.
     onMessage('content:scrollToHighlight', async (message) => {
@@ -192,46 +169,12 @@ export default defineContentScript({
         searchEngine.reload(() => run(searchEngine));
       }
 
-      // Highlights (restore, comment popup) do not depend on the floating
-      // clip button; the option only controls the button itself.
-      const { enableClipNoteFloatButton } = await getLogseqCopliotConfig();
-      // Executed when content script is loaded, can be async
-      const popupUi = await createShadowRootUi(ctx, {
-        name: 'logseq-copilot-popup',
-        mode: shadowRootMode,
-        position: 'inline',
-        anchor: 'body',
-        onMount: async (container) => {
-          // Container is a body, and React warns when creating a root on the body, so create a wrapper div
-          const app = document.createElement('div');
-          app.id = 'logseq-copilot-popup';
-          container.append(app);
-
-
-          return mountQuickCapture(app, {
-            showFloatButton: enableClipNoteFloatButton,
-          });
-        },
-        onRemove: async (root) => {
-          // Unmount the root when the UI is removed
-          if (root) {
-            const toUnmount = await root
-            toUnmount?.unmount()
-          }
-        },
-      });
-
-      if (popupUi) {
-        openLogseqLinksFromBackground(popupUi.shadow);
-        // 4. Mount the UI
-        popupUi.mount();
-      }
     };
 
     // Mount the UI without blocking the handlers above, then restore saved
     // highlights in the background. Do not await the restore here: it can be
-    // slow, and the things that need it (saving a highlight after a clip,
-    // scrolling to or removing one) await HighlightManager.ready themselves.
+    // slow, and the things that need it (scrolling to or removing a highlight)
+    // await HighlightManager.ready themselves.
     const uiMounted = mountUi().catch((error) =>
       log.error('[content] Failed to mount the UI', error),
     );

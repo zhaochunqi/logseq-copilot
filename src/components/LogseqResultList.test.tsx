@@ -140,37 +140,35 @@ describe('LogseqResultList', () => {
   });
 });
 
-describe('task rendering (like Logseq)', () => {
+describe('task rendering (read-only)', () => {
   const row = (el: HTMLElement) => el.querySelector('.lc-block-row')!;
 
-  test('TODO: an unchecked box, the switch to DOING only in the hover toolbar', async () => {
+  test('TODO: the status is a plain label, with no box and no switch', async () => {
     const el = await render({ graph: 'g', blocks: [block({ marker: 'TODO' })] });
     expect(row(el).getAttribute('data-marker')).toBe('TODO');
-    expect(el.querySelector('[role="checkbox"]')!.getAttribute('aria-checked')).toBe('false');
-    expect(el.querySelector('.lc-task .lc-marker')).toBeNull();
-    const switcher = el.querySelector('.lc-actions .lc-marker')!;
-    expect(switcher.textContent).toBe('TODO');
-    expect(switcher.getAttribute('title')).toBe('Change from TODO to DOING');
+    expect(el.querySelector('[role="checkbox"]')).toBeNull();
+    expect(el.querySelector('.lc-marker')).toBeNull();
+    expect(el.querySelector('.lc-status')!.textContent).toBe('TODO');
   });
 
-  test('DOING / NOW: the box and the marker in front of the text', async () => {
+  test('DOING / NOW: the marker in front of the text, with no checkbox', async () => {
     const el = await render({ graph: 'g', blocks: [block({ marker: 'DOING' }), block({ marker: 'NOW' })] });
-    const inline = Array.from(el.querySelectorAll('.lc-task .lc-marker')).map((m) => m.textContent);
+    const inline = Array.from(el.querySelectorAll('.lc-task .lc-status')).map((m) => m.textContent);
     expect(inline).toEqual(['DOING', 'NOW']);
-    expect(el.querySelectorAll('[role="checkbox"]')).toHaveLength(2);
+    expect(el.querySelectorAll('[role="checkbox"]')).toHaveLength(0);
   });
 
-  test('DONE: a checked box and no marker text; CANCELED: no box', async () => {
+  test('DONE / CANCELED: status labels only, never a checkbox', async () => {
     const el = await render({
       graph: 'g',
       blocks: [block({ marker: 'DONE' }), block({ marker: 'CANCELED' })],
     });
-    const boxes = el.querySelectorAll('[role="checkbox"]');
-    expect(boxes).toHaveLength(1);
-    expect(boxes[0].getAttribute('aria-checked')).toBe('true');
+    expect(el.querySelectorAll('[role="checkbox"]')).toHaveLength(0);
     expect(el.querySelector('.lc-marker')).toBeNull();
     const markers = Array.from(el.querySelectorAll('.lc-block-row')).map((r) => r.getAttribute('data-marker'));
     expect(markers).toEqual(['DONE', 'CANCELED']);
+    const labels = Array.from(el.querySelectorAll('.lc-status')).map((s) => s.textContent);
+    expect(labels).toEqual(['DONE', 'CANCELED']);
   });
 
   test('other DB statuses (e.g. IN-REVIEW) show their name', async () => {

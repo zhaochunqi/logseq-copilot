@@ -39,7 +39,7 @@ const protocolKeys = (() => {
 
 describe('messaging protocol', () => {
   test('the protocol was parsed', () => {
-    expect(protocolKeys).toContain('logseq:changeBlockMarker');
+    expect(protocolKeys).toContain('logseq:search');
     expect(protocolKeys.length).toBeGreaterThan(5);
   });
 

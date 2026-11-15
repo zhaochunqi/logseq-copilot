@@ -8,7 +8,7 @@ import {
 import { getLogseqService } from './logseq/tool';
 import { SearchEngineConfigMigration } from '@/utils/migration';
 import { inPageSidebarOpenItem } from '@/utils/storage';
-import { onMessage, sendMessage } from '@/types/messaging';
+import { onMessage } from '@/types/messaging';
 import { RecallRuleProcessor } from '@/utils/recall-rule-processor';
 import type { RecallResult } from '@/types/recall';
 import log from '@/utils/logger';
@@ -16,17 +16,8 @@ import {
   recallRequestKey,
   recentRequests,
 } from './logseq/recall/recent-requests';
-import { backgroundClipFallback, clipToLogseq, type ClipSource } from './clip';
-import {
-  clearClipErrorBadges,
-  hasClipErrorBadge,
-  showClipErrorBadge,
-} from './clip-error-badge';
-import { clipErrorMessage } from '@/utils/clip-feedback';
 import { isLogseqUrl } from '@/utils/logseq-url';
 import { startSidebarAction } from './sidebar-action';
-
-const CANNOT_CLIP_PAGE = 'Cannot clip this page: extensions cannot run on it.';
 
 // Long enough to cover a result page that reloads itself (Bing: ~1.5 s).
 const RECALL_SHARE_MS = 5_000;
@@ -99,26 +90,6 @@ export default defineBackground({
       browser.runtime.openOptionsPage();
     });
 
-    // A failed clip rejects with a readable message (LogseqError), which the
-    // sender (content script, sidebar) shows.
-    // The content script sends this from the page it clips, so clip its tab:
-    // the active tab of the current window can be another page once focus has
-    // moved.
-    onMessage('logseq:clipWithSelection', async ({ data, sender }) => {
-      await quickCapture(data, sender.tab);
-    });
-
-    // The browser sidebar names the tab beside it: its messages have no
-    // sender tab, and the active tab of the current window may be in another
-    // window.
-    onMessage('logseq:clipPage', async ({ data }) => {
-      const tabId = data?.tabId;
-      await quickCapture(
-        '',
-        tabId === undefined ? undefined : await browser.tabs.get(tabId),
-      );
-    });
-
     onMessage('app:openPage', async ({ data }) => {
       await openPage(data.url);
     });
@@ -136,13 +107,6 @@ export default defineBackground({
       }
       if (!isLogseqUrl(data?.url)) throw new Error('Not a logseq: link.');
       await browser.tabs.update(tabId, { url: data.url });
-    });
-
-    onMessage('logseq:changeBlockMarker', async ({ data }) => {
-      // The sender (content script or sidebar) updates its UI from this return
-      // value, so report the service's real outcome.
-      const logseqService = await getLogseqService();
-      return await logseqService.changeBlockMarker(data.uuid, data.marker);
     });
 
     const getCurrentTab = async () => {
@@ -163,23 +127,6 @@ export default defineBackground({
       const activeTab = tab;
       if (activeTab.url !== url)
         await browser.tabs.update(activeTab.id!, { url: url });
-    };
-
-    // Without the sender's tab (an extension page sent the message), clip the
-    // active tab of the current window.
-    const quickCapture = async (
-      data: string,
-      senderTab?: { id?: number; url?: string; title?: string },
-    ) => {
-      const tab = senderTab ?? (await getCurrentTab());
-      if (!tab) throw new Error('No tab to clip.');
-      await clip({ url: tab.url, title: tab.title, data }, tab.id);
-    };
-
-    const clip = async (source: ClipSource, tabId: number | undefined) => {
-      await clipToLogseq(source);
-      await clearClipErrorBadges();
-      if (tabId !== undefined) debounceBadgeSearch(source.url, tabId);
     };
 
     browser.tabs.onActivated.addListener((activeInfo) => {
@@ -226,95 +173,16 @@ export default defineBackground({
 
     const debounceBadgeSearch = debounce(badgeSearch, 1000);
 
-    // Menus persist across service worker restarts, so create them only in
-    // onInstalled. It also fires when the browser itself updates
-    // (chrome_update, browser_update) while the menus still exist, so clear
-    // them first: creating an existing id fails with "duplicate id" (reported
-    // via runtime.lastError, which try/catch cannot catch).
-    const createContextMenus = async () => {
-      await browser.contextMenus.removeAll();
-      browser.contextMenus.create({
-        id: 'clip-with-selection',
-        title: 'Clip "%s"',
-        visible: true,
-        contexts: ['selection'],
-      });
-      browser.contextMenus.create({
-        id: 'clip-page',
-        title: 'Clip page link',
-        visible: true,
-        contexts: ['page'],
-      });
-      // The id predates the sidebar showing more than highlights.
-      browser.contextMenus.create({
-        id: 'open-highlights-sidebar',
-        title: 'Open sidebar',
-        visible: true,
-        contexts: ['page', 'selection'],
-      });
-    };
-
-    // Call sidebar.open / sidebar.toggle first in the handler of a click, menu
-    // item or command: the browser opens its sidebar only while the user
-    // action is still alive, so nothing may be awaited before it.
+    // Call sidebar.open / sidebar.toggle first in the handler of a click or
+    // command: the browser opens its sidebar only while the user action is
+    // still alive, so nothing may be awaited before it.
     const sidebar = startSidebarAction();
 
     // The toolbar button. Chrome opens its side panel itself, without this
     // event, unless the sidebar drawn on pages is in use (sidebar-action.ts).
     browser.action.onClicked.addListener((tab) => sidebar.toggle(tab));
 
-    // Clip commands (shortcut, context menu) go to the content script: it
-    // clips the selection as Markdown, highlights it, and shows a failure in
-    // the page. Where it cannot run (the browser's PDF viewer, ...), the
-    // background clips the plain selected text a menu click reports, and
-    // reports a failure on the toolbar button.
-    const relayClipCommand = async (
-      send: (tabId: number) => Promise<void>,
-      tab: Browser.tabs.Tab | undefined,
-      info: { selectionText?: string; pageUrl?: string } = {},
-    ) => {
-      if (tab?.id !== undefined) {
-        try {
-          await send(tab.id);
-          return;
-        } catch (err) {
-          log.debug('[background] Content script unreachable', err);
-        }
-      }
-      try {
-        const fallback = backgroundClipFallback(info, tab);
-        if (!fallback) throw new Error(CANNOT_CLIP_PAGE);
-        await clip(fallback, tab?.id);
-      } catch (err) {
-        await showClipErrorBadge(tab?.id, clipErrorMessage(err));
-      }
-    };
-
-    browser.contextMenus.onClicked.addListener((info, tab) => {
-      if (info.menuItemId === 'open-highlights-sidebar') {
-        sidebar.open(tab);
-      } else if (info.menuItemId === 'clip-with-selection') {
-        void relayClipCommand(
-          (tabId) =>
-            sendMessage('content:quickCaptureWithSelection', undefined, { tabId }),
-          tab,
-          info,
-        );
-      } else if (info.menuItemId === 'clip-page') {
-        void relayClipCommand(
-          (tabId) => sendMessage('content:quickCapturePage', undefined, { tabId }),
-          tab,
-        );
-      }
-    });
-
     browser.runtime.onInstalled.addListener(async (event) => {
-      // Not awaited: the rest (and opening the options page on install) does
-      // not wait for the menus.
-      void createContextMenus().catch((err) =>
-        log.error('Failed to create the context menus:', err),
-      );
-
       // Run migration for both install and update events
       await migrateLegacyClipSettingsToTemplates().catch((err) =>
         log.error('Failed to migrate legacy clip settings:', err),
@@ -345,19 +213,10 @@ export default defineBackground({
     });
 
     browser.commands.onCommand.addListener((command, tab) => {
-      if (command === 'open-sidebar') {
-        sidebar.open(tab);
-      } else if (command === 'clip' && tab !== undefined) {
-        void relayClipCommand(
-          (tabId) => sendMessage('content:quickCapture', undefined, { tabId }),
-          tab,
-        );
-      }
+      if (command === 'open-sidebar') sidebar.open(tab);
     });
 
     async function setExtensionBadge(text: string, tabId: number) {
-      // A clip error stays on the tab until the next successful clip.
-      if (hasClipErrorBadge(tabId)) return;
       await browser.action.setBadgeText({
         text: text,
         tabId: tabId,
