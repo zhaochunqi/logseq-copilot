@@ -36,18 +36,11 @@
   // top: 0;
 }
 
-:root {
+.page,
+.block {
+  --cardBG: rgba(210, 210, 210, 0.2);
   --cardShadow: color-mix(in srgb, black 30%, transparent) 0 1px 2px 0,
     color-mix(in srgb, black 15%, transparent) 0 1px 3px 1px;
-
-  --cardBG: rgba(210, 210, 210, 0.2);
-  --markerStatusHoverColor: black;
-  --markerCheckerBGColor: rgba(175, 175, 175, 0.799);
-
-  // @media (prefers-color-scheme: dark) {
-  //   --cardBG: #292a2d;
-  //   --markerStatusHoverColor: white;
-  // }
 }
 
 .page {
@@ -115,31 +108,4 @@
   pre {
     @apply overflow-x-auto whitespace-pre-wrap;
   }
-}
-
-.blockMarker {
-  @apply flex flex-row justify-center items-center;
-}
-
-.blockMarkerCheckbox {
-  @apply m-0 border-none transition ease-in-out mr-1 transform hover:scale-110 duration-150 rounded-sm;
-  appearance: none;
-  height: 16px;
-  width: 16px;
-  background-color: var(--markerCheckerBGColor);
-}
-
-.blockMarkerCheckbox:checked {
-  appearance: auto;
-  background-color: var(--markerCheckerBGColor);
-}
-
-.blockMarkerStatus {
-  @apply flex items-center self-center text-center border-none font-bold no-underline text-orange-500 hover:no-underline transform duration-300 p-0;
-  background: none;
-  font-size: 14px;
-  line-height: 16px;
-}
-.blockMarkerStatus:hover {
-  color: var(--markerStatusHoverColor);
 }
