@@ -35,7 +35,7 @@ export default defineConfig({
     ...(previewVersionName && { version_name: previewVersionName }),
     name,
     description:
-      'Your Logseq notes next to search results and in a sidebar for the page you are on. Clip text and links into your graph.',
+      'Your Logseq notes next to search results and in a sidebar, plus a read-only page viewer and Graph browser.',
     // Firefox requires a string here; Chromium browsers take { email }.
     author:
       browser === 'firefox'
@@ -49,12 +49,6 @@ export default defineConfig({
       ...(e2eCoverage ? ['scripting'] : []),
     ],
     host_permissions: ['<all_urls>'],
-    // The in-page viewer (a content script) opens the Graph browser page in a
-    // new tab: a content script cannot reach an extension page that is not
-    // web accessible. `graph.html` only reads from the user's own Logseq API.
-    web_accessible_resources: [
-      { resources: ['graph.html'], matches: ['<all_urls>'] },
-    ],
     commands: {
       // No default shortcut: any combination can clash with the browser's own
       // or another extension's. Users bind their own in the browser's shortcut

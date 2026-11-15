@@ -41,7 +41,9 @@ export default class LogseqService implements LogseqServiceInterface {
         meta = await this.client.getPage(current);
         break;
       } catch (error: any) {
-        if (error?.status !== 404) return null;
+        // Only a missing page is "no page"; connection/token/server errors
+        // must reach the caller instead of being shown as "Page not found".
+        if (error?.status !== 404) throw error;
         const result: any = await this.client.search(current).catch(() => null);
         const candidates = result?.page_candidates ?? [];
         const candidate = candidates.find(

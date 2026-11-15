@@ -1,17 +1,17 @@
 /**
- * The `logseq:` links of content script UIs are opened by the background, so
- * the browser asks once for the extension instead of once per site. Clicks
- * are delegated on the UI's shadow root; other links keep their default.
+ * `logseq:` links in a content script UI are routed to the host's opener
+ * (the in-extension page viewer), never to the browser: following one would
+ * launch the Logseq desktop app. Clicks are delegated on the UI's shadow root;
+ * other links keep their default.
  */
 import { beforeEach, describe, expect, test, vi } from 'vitest';
-
-const sendMessage = vi.hoisted(() => vi.fn());
-vi.mock('@/types/messaging', () => ({ sendMessage }));
 
 import log from '@/utils/logger';
 import { openLogseqLinksFromBackground } from './logseq-links';
 
 const LOGSEQ = 'logseq://graph/My%20Notes?block-id=6650a1b2-0000-4000-8000-000000000001';
+
+const open = vi.fn().mockResolvedValue(undefined);
 
 /** A UI like the content script's: a closed shadow root with links in it. */
 const makeUi = () => {
@@ -24,7 +24,7 @@ const makeUi = () => {
     <a id="nohref">No href</a>
     <span id="plain">Text</span>
   `;
-  openLogseqLinksFromBackground(shadow);
+  openLogseqLinksFromBackground(shadow, open);
   return shadow;
 };
 
@@ -51,17 +51,16 @@ const press = (
 };
 
 beforeEach(() => {
-  sendMessage.mockReset().mockResolvedValue(undefined);
+  open.mockReset().mockResolvedValue(undefined);
 });
 
 describe('logseq: links', () => {
-  test('a left click is opened by the background, not by the page', () => {
+  test('a left click is opened by the host opener, not the browser', () => {
     const ui = makeUi();
 
     expect(press(ui.getElementById('logseq')!, 'click')).toBe(true);
 
-    expect(sendMessage).toHaveBeenCalledTimes(1);
-    expect(sendMessage).toHaveBeenCalledWith('logseq:openLink', { url: LOGSEQ });
+    expect(open.mock.calls).toEqual([[LOGSEQ]]);
   });
 
   test('a click on an element inside the link opens the link', () => {
@@ -69,27 +68,27 @@ describe('logseq: links', () => {
 
     expect(press(ui.getElementById('inside')!, 'click')).toBe(true);
 
-    expect(sendMessage).toHaveBeenCalledWith('logseq:openLink', { url: LOGSEQ });
+    expect(open.mock.calls).toEqual([[LOGSEQ]]);
   });
 
   test.each([
     ['Ctrl', { ctrlKey: true }],
     ['Cmd', { metaKey: true }],
     ['Shift', { shiftKey: true }],
-  ])('%s + click is opened by the background too', (_key, init) => {
+  ])('%s + click is opened by the opener too', (_key, init) => {
     const ui = makeUi();
 
     expect(press(ui.getElementById('logseq')!, 'click', init)).toBe(true);
 
-    expect(sendMessage).toHaveBeenCalledWith('logseq:openLink', { url: LOGSEQ });
+    expect(open.mock.calls).toEqual([[LOGSEQ]]);
   });
 
-  test('a middle click is opened by the background', () => {
+  test('a middle click is opened by the opener', () => {
     const ui = makeUi();
 
     expect(press(ui.getElementById('logseq')!, 'auxclick', { button: 1 })).toBe(true);
 
-    expect(sendMessage).toHaveBeenCalledWith('logseq:openLink', { url: LOGSEQ });
+    expect(open.mock.calls).toEqual([[LOGSEQ]]);
   });
 
   test('a right click keeps the context menu ("Copy link address")', () => {
@@ -97,7 +96,7 @@ describe('logseq: links', () => {
 
     expect(press(ui.getElementById('logseq')!, 'auxclick', { button: 2 })).toBe(false);
 
-    expect(sendMessage).not.toHaveBeenCalled();
+    expect(open).not.toHaveBeenCalled();
   });
 
   test('the link keeps its href', () => {
@@ -107,18 +106,9 @@ describe('logseq: links', () => {
     expect(ui.getElementById('logseq')!.getAttribute('href')).toBe(LOGSEQ);
   });
 
-  test('adding the listeners twice still sends one message per click', () => {
-    const ui = makeUi();
-    openLogseqLinksFromBackground(ui);
-
-    press(ui.getElementById('logseq')!, 'click');
-
-    expect(sendMessage).toHaveBeenCalledTimes(1);
-  });
-
-  test('a failed message is logged, not thrown', async () => {
+  test('a failed opener is logged, not thrown', async () => {
     const error = new Error('Extension context invalidated.');
-    sendMessage.mockRejectedValue(error);
+    open.mockRejectedValue(error);
     const logged = vi.spyOn(log, 'error').mockImplementation(() => {});
     const ui = makeUi();
 
@@ -136,7 +126,7 @@ describe('everything else keeps its default', () => {
     expect(press(ui.getElementById('web')!, 'click')).toBe(false);
     expect(press(ui.getElementById('web')!, 'auxclick')).toBe(false);
 
-    expect(sendMessage).not.toHaveBeenCalled();
+    expect(open).not.toHaveBeenCalled();
   });
 
   test('an <a> without href, and text outside links', () => {
@@ -145,7 +135,7 @@ describe('everything else keeps its default', () => {
     expect(press(ui.getElementById('nohref')!, 'click')).toBe(false);
     expect(press(ui.getElementById('plain')!, 'click')).toBe(false);
 
-    expect(sendMessage).not.toHaveBeenCalled();
+    expect(open).not.toHaveBeenCalled();
   });
 
   test('a click a page script made (not trusted)', () => {
@@ -153,7 +143,7 @@ describe('everything else keeps its default', () => {
 
     expect(press(ui.getElementById('logseq')!, 'click', {}, false)).toBe(false);
 
-    expect(sendMessage).not.toHaveBeenCalled();
+    expect(open).not.toHaveBeenCalled();
   });
 
   test('a click the UI already handled (default prevented)', () => {
@@ -163,51 +153,20 @@ describe('everything else keeps its default', () => {
 
     press(link, 'click');
 
-    expect(sendMessage).not.toHaveBeenCalled();
-  });
-});
-
-// An extension page (the browser sidebar) has no tab for logseq:openLink.
-describe('with an opener of its own', () => {
-  /** A page with links and the listeners of `open` on its root element. */
-  const makePage = (open: (url: string) => Promise<unknown>) => {
-    const root = document.createElement('div');
-    root.innerHTML = `
-      <a id="logseq" href="${LOGSEQ}"><span id="inside">Block</span></a>
-      <a id="web" href="https://example.com/">Web</a>
-    `;
-    document.body.replaceChildren(root);
-    const stop = openLogseqLinksFromBackground(root, open);
-    return { link: (id: string) => root.querySelector(`#${id}`)!, stop };
-  };
-
-  test('a click on a logseq: link goes to the opener, not logseq:openLink', () => {
-    const open = vi.fn().mockResolvedValue(undefined);
-    const { link } = makePage(open);
-
-    expect(press(link('inside'), 'click')).toBe(true);
-    expect(press(link('logseq'), 'auxclick', { button: 1 })).toBe(true);
-
-    expect(open.mock.calls).toEqual([[LOGSEQ], [LOGSEQ]]);
-    expect(sendMessage).not.toHaveBeenCalled();
-  });
-
-  test('web links keep their default', () => {
-    const open = vi.fn().mockResolvedValue(undefined);
-    const { link } = makePage(open);
-
-    expect(press(link('web'), 'click')).toBe(false);
-
     expect(open).not.toHaveBeenCalled();
   });
 
   test('stops after the returned function is called', () => {
-    const open = vi.fn().mockResolvedValue(undefined);
-    const { link, stop } = makePage(open);
+    const host = document.createElement('div');
+    const root = document.createElement('div');
+    root.innerHTML = `<a id="logseq" href="${LOGSEQ}">Block</a>`;
+    host.append(root);
+    document.body.replaceChildren(host);
+    const stop = openLogseqLinksFromBackground(root, open);
 
     stop();
 
-    expect(press(link('logseq'), 'click')).toBe(false);
+    expect(press(root.querySelector('#logseq')!, 'click')).toBe(false);
     expect(open).not.toHaveBeenCalled();
   });
 });

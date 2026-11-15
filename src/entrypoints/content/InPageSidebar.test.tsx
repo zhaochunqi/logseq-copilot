@@ -386,9 +386,6 @@ describe('startInPageSidebar', () => {
     expect(openPageViewer).toHaveBeenCalledWith({ page: 'books' });
     // A graph-only logseq: link is parsed, but opens nothing.
     expect(openPageViewer).toHaveBeenCalledTimes(1);
-    expect(
-      sendMessage.mock.calls.filter(([type]) => type === 'logseq:openLink'),
-    ).toEqual([]);
   });
 
   it('keeps the page from seeing keys typed in it', async () => {

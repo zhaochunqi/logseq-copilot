@@ -4,7 +4,7 @@ import { createRoot } from 'react-dom/client';
 import { browser } from 'wxt/browser';
 import { LogseqCopliot } from './LogseqCopliot';
 import { startInPageSidebar } from './InPageSidebar';
-import { startPageViewer } from './PageViewer';
+import { openPageViewer, startPageViewer } from './PageViewer';
 import { detectArc } from './arc-detection';
 import { CustomSearchEngine } from './searchingEngines/searchingEngines';
 import { keepOnPage } from './searchingEngines/keep-on-page';
@@ -137,7 +137,22 @@ export default defineContentScript({
         });
 
         if (searchEngineUi) {
-          openLogseqLinksFromBackground(searchEngineUi.shadow);
+          // `logseq:` links open the in-extension page viewer, never the desktop app.
+          openLogseqLinksFromBackground(searchEngineUi.shadow, (raw) => {
+            try {
+              const url = new URL(raw);
+              const page = url.searchParams.get('page');
+              const block = url.searchParams.get('block-id');
+              if (page || block) {
+                openPageViewer({
+                  ...(page ? { page } : {}),
+                  ...(block ? { block } : {}),
+                });
+              }
+            } catch {
+              // A malformed link is ignored rather than navigating the host page.
+            }
+          });
           // 4. Mount the UI. The host element is inline by default; as a
           // block it takes the full width of the host column.
           searchEngineUi.shadowHost.style.display = 'block';

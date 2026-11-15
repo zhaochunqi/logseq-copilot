@@ -16,7 +16,6 @@ import {
   recallRequestKey,
   recentRequests,
 } from './logseq/recall/recent-requests';
-import { isLogseqUrl } from '@/utils/logseq-url';
 import { startSidebarAction } from './sidebar-action';
 
 // Long enough to cover a result page that reloads itself (Bing: ~1.5 s).
@@ -35,22 +34,6 @@ export default defineBackground({
     // Executed when background is loaded, CANNOT BE ASYNC
 
     // Register message handlers using @webext-core/messaging
-    onMessage('logseq:pageView', async ({ data }) => {
-      try {
-        const service = await getLogseqService();
-        let page = data.page;
-        if (!page && data.block) {
-          const block = await service.client.getBlockViaUuid(data.block, {});
-          page = block?.page?.name;
-        }
-        if (!page || !service.getPageView) return null;
-        return await service.getPageView(page);
-      } catch (error) {
-        log.warn('[background] Failed to read page view:', error);
-        return null;
-      }
-    });
-
     onMessage('logseq:allPages', async () => {
       try {
         const service = await getLogseqService();
@@ -134,19 +117,26 @@ export default defineBackground({
       await openPage(data.url);
     });
 
-    // A link to Logseq in a content script UI (the recall card, ...). Opened
-    // by the page, the browser asks whether that site may open Logseq, once
-    // per site; opened here, it asks once for the extension. Only in the tab
-    // the content script runs in, and only logseq: URLs: this must not become
-    // a way to send a tab to any address.
-    onMessage('logseq:openLink', async ({ data, sender }) => {
-      const tabId = sender.tab?.id;
-      if (tabId === undefined || tabId < 0) {
-        log.warn('[background] logseq:openLink without a sender tab, ignored');
-        return;
+    // A content script's request to open one of this extension's own pages (the
+    // graph browser) in a new tab. Anything outside the extension is refused:
+    // this must not become a way to send a tab to any address.
+    onMessage('app:openTab', async ({ data }) => {
+      const extensionRoot = browser.runtime.getURL('/');
+      if (!data?.url?.startsWith(extensionRoot)) {
+        throw new Error('Not an extension page.');
       }
-      if (!isLogseqUrl(data?.url)) throw new Error('Not a logseq: link.');
-      await browser.tabs.update(tabId, { url: data.url });
+      await browser.tabs.create({ url: data.url });
+    });
+
+    onMessage('logseq:pageView', async ({ data }) => {
+      const service = await getLogseqService();
+      let page = data.page;
+      if (!page && data.block) {
+        const block = await service.client.getBlockViaUuid(data.block, {});
+        page = block?.page?.name;
+      }
+      if (!page || !service.getPageView) return null;
+      return await service.getPageView(page);
     });
 
     const getCurrentTab = async () => {

@@ -1,4 +1,3 @@
-import { sendMessage } from '@/types/messaging';
 import log from '@/utils/logger';
 import { isLogseqUrl } from '@/utils/logseq-url';
 
@@ -16,42 +15,32 @@ const logseqLinkOf = (event: MouseEvent): string | undefined => {
   return isLogseqUrl(link?.href) ? link.href : undefined;
 };
 
-type OpenLink = (url: string) => Promise<unknown>;
-
-/** From a content script: the background opens it in the sender's tab. */
-const sendOpenLink: OpenLink = (url) => sendMessage('logseq:openLink', { url });
+type OpenLink = (url: string) => Promise<unknown> | unknown;
 
 const opener = (open: OpenLink) => (event: Event) => {
   const url = logseqLinkOf(event as MouseEvent);
   if (!url) return;
   event.preventDefault();
-  open(url).catch((error) => log.error('Failed to open the Logseq link', error));
+  Promise.resolve(open(url)).catch((error) =>
+    log.error('Failed to open the Logseq link', error),
+  );
 };
 
-// One listener for the default, so adding it again is a no-op.
-const openFromBackground = opener(sendOpenLink);
-
 /**
- * Have the background open the `logseq:` links of a content script UI.
+ * Route the `logseq:` links of a content script UI to `open` instead of the
+ * browser, which would launch the Logseq desktop app.
  *
- * A link the page opens itself makes the browser ask whether that site may
- * open Logseq ("www.google.com wants to open this application"), and "always
- * allow" lets that site open Logseq. Opened by the background
- * (`logseq:openLink`), it asks once for the extension, for every site. The
- * links keep their `href`, for the status bar and "Copy link address".
- *
+ * The links keep their `href`, for the status bar and "Copy link address";
+ * callers parse the page/block out of it and open the in-extension viewer.
  * Call it with the UI's shadow root: the listeners there see the real target
- * of a click, even in a closed shadow root. Adding them again is a no-op.
- *
- * An extension page has no tab of its own for `logseq:openLink`: it passes
- * `open`, which asks the background some other way. Returns a function that
- * removes the listeners.
+ * of a click, even in a closed shadow root. Returns a function that removes
+ * the listeners; adding them again is a no-op.
  */
 export function openLogseqLinksFromBackground(
   root: EventTarget,
-  open: OpenLink = sendOpenLink,
+  open: OpenLink,
 ): () => void {
-  const listener = open === sendOpenLink ? openFromBackground : opener(open);
+  const listener = opener(open);
   root.addEventListener('click', listener);
   root.addEventListener('auxclick', listener);
   return () => {

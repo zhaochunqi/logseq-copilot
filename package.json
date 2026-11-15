@@ -1,7 +1,7 @@
 {
   "name": "logseq-copilot",
   "version": "2.1.0",
-  "description": "Connect to the Logseq API and use your notes while browsing.",
+  "description": "Read your Logseq notes next to search results and in a sidebar, with a read-only page viewer and Graph browser.",
   "license": "GPL-3.0-only",
   "repository": {
     "type": "git",

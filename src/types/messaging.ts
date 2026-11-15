@@ -41,11 +41,11 @@ export interface MessagingProtocol {
   'app:openPage': (data: { url: string }) => void;
 
   /**
-   * From a content script: open a `logseq:` link of its UI in its tab
-   * (src/utils/logseq-links.ts). Rejects any other URL; ignored without a
-   * sender tab.
+   * Open an extension page (the graph browser) in a new tab. The background
+   * refuses anything outside this extension, so a content script cannot use
+   * it to navigate the user anywhere else.
    */
-  'logseq:openLink': (data: { url: string }) => void;
+  'app:openTab': (data: { url: string }) => void;
 
   /**
    * Sent by the browser sidebar to one tab: scroll the highlight to the middle

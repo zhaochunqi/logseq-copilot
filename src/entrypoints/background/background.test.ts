@@ -230,71 +230,42 @@ describe('logseq:recall', () => {
   });
 });
 
-// A logseq: link of a content script UI (src/utils/logseq-links.ts).
-describe('logseq:openLink', () => {
-  const LINK = 'logseq://graph/My%20Notes?page=copilot';
-  const pageTab = { id: 7, url: 'https://www.google.com/search?q=copilot' };
+// A content script asking the background to open an extension page in a tab.
+describe('app:openTab', () => {
+  const EXTENSION_URL = 'chrome-extension://test/graph.html?page=copilot';
 
   beforeEach(() => {
-    vi.spyOn(fakeBrowser.tabs, 'update').mockResolvedValue({} as any);
+    vi.spyOn(fakeBrowser.runtime, 'getURL').mockImplementation(
+      (path: string) => `chrome-extension://test${path.startsWith('/') ? path : `/${path}`}` as any,
+    );
+    vi.spyOn(fakeBrowser.tabs, 'create').mockResolvedValue({} as any);
   });
 
   afterEach(() => {
-    vi.mocked(fakeBrowser.tabs.update).mockRestore();
+    vi.mocked(fakeBrowser.runtime.getURL).mockRestore();
+    vi.mocked(fakeBrowser.tabs.create).mockRestore();
   });
 
-  /** Send as the content script in `tab` would (fakeBrowser's sender is empty). */
-  const openFrom = async (tab: { id?: number; url?: string }, url: unknown) => {
-    const send = vi
-      .spyOn(fakeBrowser.runtime, 'sendMessage')
-      .mockImplementationOnce(async (message: any) => {
-        const res = await fakeBrowser.runtime.onMessage.trigger(message, { tab } as any);
-        return res.find((r: unknown) => !!r);
-      });
-    return sendMessage('logseq:openLink', { url: url as string }).finally(() =>
-      send.mockRestore(),
-    );
-  };
+  test('opens an extension page in a new tab', async () => {
+    await sendMessage('app:openTab', { url: EXTENSION_URL });
 
-  test('opens the link in the tab of the content script that sent it', async () => {
-    await openFrom(pageTab, LINK);
-
-    expect(fakeBrowser.tabs.update).toHaveBeenCalledTimes(1);
-    expect(fakeBrowser.tabs.update).toHaveBeenCalledWith(7, { url: LINK });
+    expect(fakeBrowser.tabs.create).toHaveBeenCalledWith({ url: EXTENSION_URL });
   });
 
   test.each([
     'https://evil.example/',
     'http://localhost:12315/api',
     'javascript:alert(1)',
-    'data:text/html,<p>hi',
-    'file:///etc/passwd',
     'chrome://settings',
-    'about:blank',
-    'logseq',
-    '/graph/Notes',
+    'logseq://graph/G?page=x',
     '',
     undefined,
-    42,
-  ])('rejects %j: only logseq: URLs', async (url) => {
-    const err = await openFrom(pageTab, url).catch((e) => e);
+  ])('refuses %j: only this extension’s pages', async (url) => {
+    const err = await sendMessage('app:openTab', { url: url as string }).catch((e) => e);
 
     expect(err).toBeInstanceOf(Error);
-    expect(err.message).toBe('Not a logseq: link.');
-    expect(fakeBrowser.tabs.update).not.toHaveBeenCalled();
-  });
-
-  test('ignores a message without a sender tab (the browser sidebar)', async () => {
-    await sendMessage('logseq:openLink', { url: LINK });
-
-    expect(fakeBrowser.tabs.update).not.toHaveBeenCalled();
-  });
-
-  test('ignores a sender without a tab id', async () => {
-    await openFrom({ url: pageTab.url }, LINK);
-    await openFrom({ id: -1, url: pageTab.url }, LINK);
-
-    expect(fakeBrowser.tabs.update).not.toHaveBeenCalled();
+    expect(err.message).toBe('Not an extension page.');
+    expect(fakeBrowser.tabs.create).not.toHaveBeenCalled();
   });
 });
 

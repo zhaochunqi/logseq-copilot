@@ -44,13 +44,8 @@ const graphPageUrl = (name: string) =>
   `${browser.runtime.getURL('/graph.html' as any)}?page=${encodeURIComponent(name)}`;
 
 const openNewTab = async (url: string) => {
-  try {
-    // In an extension page this is available; in a content script it may not
-    // be, in which case the ordinary window opener leaves the host page alone.
-    await browser.tabs.create({ url });
-  } catch {
-    window.open(url, '_blank', 'noopener,noreferrer');
-  }
+  // A content script has no tabs API; the background opens the extension page.
+  await sendMessage('app:openTab', { url });
 };
 
 export async function startPageViewer(ctx: ContentScriptContext): Promise<void> {
@@ -63,9 +58,12 @@ export async function startPageViewer(ctx: ContentScriptContext): Promise<void> 
   let requestId = 0;
   const history: Target[] = [];
   let mounted = false;
+  let detachEscape: (() => void) | undefined;
 
   const close = () => {
     if (!mounted) return;
+    detachEscape?.();
+    detachEscape = undefined;
     // Drop the UI rather than reusing an unmounted React root after `remove`.
     ui?.remove();
     ui = null;
@@ -118,7 +116,11 @@ export async function startPageViewer(ctx: ContentScriptContext): Promise<void> 
 
   const navigate = async (target: Target, push = true) => {
     const id = ++requestId;
-    if (push && mounted && (current.page || current.block)) history.push(current);
+    if (push && mounted && (current.page || current.block)) {
+      history.push(current);
+      // Keep the in-viewer history bounded; the drawer is long-lived.
+      if (history.length > 50) history.shift();
+    }
     current = target;
     anchorBlock = target.block ?? null;
     loading = true;
@@ -161,6 +163,14 @@ export async function startPageViewer(ctx: ContentScriptContext): Promise<void> 
         if ((event as KeyboardEvent).key === 'Escape') close();
       };
       ui.shadow.addEventListener('keydown', escape);
+      // Escape also works while focus is on the host page; removed on close.
+      if (!detachEscape) {
+        const onKeyDown = (event: KeyboardEvent) => {
+          if (event.key === 'Escape') close();
+        };
+        window.addEventListener('keydown', onKeyDown);
+        detachEscape = () => window.removeEventListener('keydown', onKeyDown);
+      }
       ui.shadow.addEventListener('click', (event) => {
         const link = (event.target as Element | null)?.closest?.('a[href]') as
           | HTMLAnchorElement
@@ -200,14 +210,5 @@ export async function startPageViewer(ctx: ContentScriptContext): Promise<void> 
     const target = pending;
     pending = null;
     active.navigate(target);
-  }
-
-  try {
-    ctx.addEventListener?.(window, 'keydown', ((event: KeyboardEvent) => {
-      if (event.key === 'Escape') close();
-    }) as EventListener);
-  } catch {
-    // A minimal test context may not expose addEventListener; the drawer's
-    // shadow-root listener still handles Escape while it has focus.
   }
 }

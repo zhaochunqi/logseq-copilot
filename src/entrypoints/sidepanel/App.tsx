@@ -10,8 +10,7 @@ import log from '@/utils/logger';
 import { openLogseqLinksFromBackground } from '@/utils/logseq-links';
 
 /**
- * This page has no tab of its own, so `logseq:openLink` (which opens the link
- * in its sender's tab) would be ignored. Logseq links are translated to the
+ * This page has no tab of its own. Logseq links are translated to the
  * extension's read-only Graph page and opened in a new tab.
  */
 const openGraphPage = async (url: string) => {
