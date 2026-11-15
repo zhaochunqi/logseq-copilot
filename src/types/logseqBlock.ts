@@ -28,6 +28,43 @@ export type LogseqPageContentType = {
   page: LogseqPageIdenity;
 };
 
+/** Identity of one block as `logseq-graph` states it on reads. */
+export type PageBlockSelector = {
+  kind: 'durable' | 'ephemeral';
+  id: string;
+};
+
+/** One block of a whole page read (`getPageBlocksTree` / `getPageSnapshot`). */
+export type PageBlock = {
+  preorder: number;
+  depth: number;
+  marker: string;
+  text: string;
+  selector?: PageBlockSelector | null;
+  /** The block's markdown rendered to sanitized HTML by the background. */
+  html?: string;
+};
+
+export type PageProperty = { key: string; value: string };
+
+/** One page rendered from the API, read-only. */
+export type PageView = {
+  name: string;
+  originalName: string;
+  journal: boolean;
+  properties: PageProperty[];
+  blocks: PageBlock[];
+};
+
+/** One entry of `logseq.Editor.getAllPages`, as `logseq-graph` states it. */
+export type LogseqPageEntry = {
+  name: string;
+  id?: number;
+  kind?: string;
+  journal_date?: string | null;
+  block_count?: number;
+};
+
 export type LogseqSearchResult = {
   blocks: LogseqBlockType[];
   pages: LogseqPageIdenity[];

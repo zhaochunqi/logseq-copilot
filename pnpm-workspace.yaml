@@ -1,0 +1,17 @@
+# pnpm 12 reads these settings here, not from package.json's "pnpm" field.
+packages:
+  - '.'
+
+overrides:
+  'firefox-profile@<4.7.1': '^4.7.1'
+  'postcss-selector-parser@<6.1.5': '^6.1.5'
+  'shell-quote@<1.9.0': '^1.9.0'
+  'tmp@<0.2.6': '^0.2.6'
+
+onlyBuiltDependencies:
+  - '@tailwindcss/oxide'
+  - esbuild
+
+ignoredBuiltDependencies:
+  - '@parcel/watcher'
+  - spawn-sync
