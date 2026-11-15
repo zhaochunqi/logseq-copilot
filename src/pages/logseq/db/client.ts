@@ -1,4 +1,4 @@
-import { LogseqBlockType, LogseqPageIdenity } from '../../../types/logseqBlock';
+import { LogseqPageIdenity } from '../../../types/logseqBlock';
 
 import {
   CannotConnectWithLogseq,
@@ -44,20 +44,6 @@ export type LogseqResponseType<T> = {
 export default class LogseqClient extends LogseqClientBase implements LogseqClientInterface {
   private getCurrentGraph = async (): Promise<Graph> => {
     return await this.baseJson('logseq.getCurrentGraph', []);
-  };
-
-  public appendBlock = async (page: string, content: string) => {
-    const resp = await this.baseJson('logseq.Editor.appendBlockInPage', [
-      page,
-      content,
-    ]);
-    return resp;
-  };
-
-  public getCurrentPage = async () => {
-    return await this.catchIssues(async () => {
-      return await this.baseJson('logseq.Editor.getCurrentPage', []);
-    });
   };
 
   private getAllPage = async () => {
@@ -164,10 +150,4 @@ export default class LogseqClient extends LogseqClientBase implements LogseqClie
     return await this.catchIssues(async () => await this.getVersionInternal());
   };
 
-  public updateBlock = async (block: LogseqBlockType) => {
-    return await this.baseJson('logseq.Editor.updateBlock', [
-      block.uuid,
-      block.content,
-    ]);
-  };
 }

@@ -1,4 +1,9 @@
-import { LogseqBlockType, LogseqPageIdenity } from '../../../types/logseqBlock';
+import {
+  LogseqBlockType,
+  LogseqPageIdenity,
+  PageBlock,
+  PageProperty,
+} from '../../../types/logseqBlock';
 
 import {
   CannotConnectWithLogseq,
@@ -49,32 +54,39 @@ export default class LogseqClient
     return await this.baseJson('logseq.getCurrentGraph', []);
   };
 
-  public appendBlock = async (page, content) => {
-    const resp = await this.baseJson('logseq.Editor.appendBlockInPage', [
-      page,
-      content,
-    ]);
-    return resp;
-  };
-
-  public getCurrentPage = async () => {
-    return await this.catchIssues(async () => {
-      return await this.baseJson('logseq.Editor.getCurrentPage', []);
-    });
-  };
-
   private getAllPage = async () => {
     return await this.baseJson('logseq.Editor.getAllPages', []);
   };
 
   public getPage = async (
-    pageIdenity: LogseqPageIdenity,
+    pageIdenity: string | Partial<LogseqPageIdenity>,
   ): Promise<LogseqPageIdenity> => {
-    const resp: LogseqPageIdenity = await this.baseJson(
-      'logseq.Editor.getPage',
-      [pageIdenity.id || pageIdenity.uuid || pageIdenity.name],
-    );
-    return resp;
+    const identity = typeof pageIdenity === 'string'
+      ? pageIdenity
+      : typeof pageIdenity.id === 'number'
+        ? { id: pageIdenity.id }
+        : pageIdenity.uuid
+          ? { uuid: pageIdenity.uuid }
+          : { name: pageIdenity.name };
+    return await this.baseJson('logseq.Editor.getPage', [identity]);
+  };
+
+  public getPageBlocksTree = async (name: string): Promise<{ blocks: PageBlock[] }> => {
+    const result = await this.baseJson('logseq.Editor.getPageBlocksTree', [name]);
+    return Array.isArray(result) ? { blocks: result } : result;
+  };
+
+  public getPageSnapshot = async (name: string): Promise<{
+    exists: boolean;
+    properties: PageProperty[];
+    blocks: PageBlock[];
+    version?: unknown;
+  } | null> => {
+    try {
+      return await this.baseJson('logseq.Graph.getPageSnapshot', [name]);
+    } catch (_error) {
+      return null;
+    }
   };
 
   public getPageDB = async (
@@ -106,10 +118,6 @@ export default class LogseqClient
     opt?: { includeChildren: boolean },
   ) => {
     return await this.baseJson('get_block', [uuid, opt]);
-  };
-
-  public isDBGraph = async () => {
-    return await this.baseJson('check_current_is_db_graph', []);
   };
 
   private showMsgInternal = async (
@@ -182,11 +190,4 @@ export default class LogseqClient
     return await this.catchIssues(async () => await this.getVersionInternal());
   };
 
-  public updateBlock = async (block: LogseqBlockType) => {
-    console.log(block.content);
-    return await this.baseJson('logseq.Editor.updateBlock', [
-      block.uuid,
-      block.content,
-    ]);
-  };
 }

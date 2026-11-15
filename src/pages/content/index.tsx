@@ -1,9 +1,7 @@
-import { getLogseqCopliotConfig } from '@/config';
 import { fixDuckDuckGoDark } from '@/utils';
 import { createRoot } from 'react-dom/client';
 import Browser from 'webextension-polyfill';
 import { LogseqCopliot } from './LogseqCopliot';
-import mountQuickCapture from './QuickCapture';
 import searchEngines, {
   Baidu,
   Bing,
@@ -57,8 +55,3 @@ if (searchEngine) {
     searchEngine.reload(() => run(searchEngine));
   }
 }
-
-getLogseqCopliotConfig().then(({ enableClipNoteFloatButton }) => {
-  if (!enableClipNoteFloatButton) return;
-  mountQuickCapture();
-});

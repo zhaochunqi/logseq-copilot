@@ -5,6 +5,29 @@ export type LogseqPageIdenity = {
   originalName?: string;
 };
 
+export type PageBlockSelector = {
+  kind: 'durable' | 'ephemeral';
+  id: string;
+};
+
+export type PageBlock = {
+  preorder: number;
+  depth: number;
+  marker: string;
+  text: string;
+  selector?: PageBlockSelector | null;
+};
+
+export type PageProperty = { key: string; value: string };
+
+export type PageView = {
+  name: string;
+  originalName: string;
+  journal: boolean;
+  properties: PageProperty[];
+  blocks: PageBlock[];
+};
+
 export type LogseqBlockType = {
   uuid: string;
   html: string;
@@ -13,6 +36,7 @@ export type LogseqBlockType = {
   format: string;
   marker: string;
   priority: string;
+  selector?: PageBlockSelector;
 };
 
 export type LogseqPageContentType = {

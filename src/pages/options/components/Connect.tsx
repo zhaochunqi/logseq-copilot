@@ -61,11 +61,7 @@ export const LogseqConnectOptions = () => {
         logseqHostName: logseqConfig?.logseqHostName,
         logseqPort: logseqConfig?.logseqPort,
       });
-      if (await checkConnection()) {
-        const service = await getLogseqService();
-        const graph = await service.getGraph();
-        window.location = `logseq://graph/${graph!.name}`;
-      }
+      await checkConnection();
     });
     promise.then(console.log).catch(console.error);
   };
@@ -95,8 +91,9 @@ export const LogseqConnectOptions = () => {
     const connectStatus = resp.msg === 'success';
     setConnected(connectStatus);
     if (connectStatus) {
-      const version = await service.getVersion();
-      setButtonMessage(`Connected to Logseq v${version}!`);
+      const [graph, version] = await Promise.all([service.getGraph(), service.getVersion()]);
+      const graphName = typeof graph === 'string' ? graph : (graph as { name?: string })?.name;
+      setButtonMessage(`Connected to ${graphName || 'Logseq'} (v${version})`);
     } else {
       setConnected(false);
       setButtonMessage(resp.msg);

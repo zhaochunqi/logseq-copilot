@@ -20,6 +20,11 @@
     "publish:edge": "node pipeline/edge-addon-publish.mjs",
     "publish:firefox": "web-ext sign -s build/firefox"
   },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild"
+    ]
+  },
   "dependencies": {
     "@chakra-ui/react": "^2.8.2",
     "@tabler/icons-react": "^2.12.0",

@@ -1,4 +1,4 @@
-import { LogseqBlockType } from '../../../types/logseqBlock';
+import { LogseqBlockType, PageView } from '../../../types/logseqBlock';
 import LogseqClient from './client';
 import { renderBlock } from '../tool';
 import { LogseqServiceInterface } from '../interfaces';
@@ -16,6 +16,11 @@ export default class LogseqDBService implements LogseqServiceInterface {
 
   public async getVersion() {
     return (await this.client.getVersion()).version;
+  }
+
+  public async getPageView(_name: string): Promise<PageView | null> {
+    // This fork targets the file-first logseq-graph API; DB graphs are not supported here.
+    return null;
   }
 
   private async searchGraph(graphName: string, query: string) {
@@ -113,35 +118,4 @@ export default class LogseqDBService implements LogseqServiceInterface {
     };
   }
 
-  public async changeBlockMarker(uuid: string, marker: string) {
-    const graph = await this.getGraph();
-    const block = await this.getBlock(uuid, graph);
-
-    if (block.content.includes('SCHEDULED:')) {
-      return {
-        type: 'change-block-marker-result',
-        uuid: uuid,
-        status: 'failed',
-        msg: 'Not support scheduled task.',
-      };
-    }
-    block.content = block.content.replace(block.marker, marker);
-
-    const result = await this.client.updateBlock(block);
-    console.debug(result);
-    if (Object.hasOwnProperty(result, 'error')) {
-      return {
-        type: 'change-block-marker-result',
-        uuid: uuid,
-        status: 'failed',
-        msg: 'error',
-      };
-    }
-    return {
-      type: 'change-block-marker-result',
-      uuid: uuid,
-      status: 'success',
-      marker: marker,
-    };
-  }
 }

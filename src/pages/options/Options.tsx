@@ -1,13 +1,5 @@
-import {
-  Flex,
-  Container,
-  Heading,
-  Text,
-  Link,
-  Divider,
-} from '@chakra-ui/react';
+import { Flex, Container, Heading, Text, Link } from '@chakra-ui/react';
 import { LogseqConnectOptions } from './components/Connect';
-import { ClipNoteOptions } from './components/ClipNote';
 import styles from './Options.module.scss';
 
 const Options = () => {
@@ -26,10 +18,6 @@ const Options = () => {
         </Flex>
         <Flex direction={'column'} w={'40rem'} gap={2}>
           <LogseqConnectOptions />
-
-          <Divider />
-
-          <ClipNoteOptions />
         </Flex>
       </Flex>
     </Container>

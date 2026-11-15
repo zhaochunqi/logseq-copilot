@@ -6,36 +6,25 @@ export type LogseqCopliotConfig = {
   logseqHostName: string;
   logseqPort: number;
   logseqAuthToken: string;
-  enableClipNoteFloatButton: boolean;
-  clipNoteLocation: string;
-  clipNoteCustomPage: string;
-  clipNoteTemplate: string;
 };
 
 export const getLogseqCopliotConfig =
   async (): Promise<LogseqCopliotConfig> => {
     const {
       version = '',
-      logseqHost = 'http://localhost:12315',
-      logseqHostName = 'localhost',
-      logseqPort = 12315,
+      logseqHost = '',
+      logseqHostName = '127.0.0.1',
+      logseqPort = 8765,
       logseqAuthToken = '',
-      enableClipNoteFloatButton = false,
-      clipNoteLocation = "journal",
-      clipNoteCustomPage = "",
-      clipNoteTemplate = `#[[Clip]] [{{title}}]({{url}})
-{{content}}`
     } = await Browser.storage.local.get();
     return {
       version,
-      logseqHost,
+      logseqHost: typeof logseqHost === 'string' && logseqHost.trim()
+        ? logseqHost
+        : `http://${logseqHostName}:${logseqPort}`,
       logseqHostName,
       logseqPort,
       logseqAuthToken,
-      enableClipNoteFloatButton,
-      clipNoteLocation,
-      clipNoteCustomPage,
-      clipNoteTemplate,
     };
   };
 

@@ -17,7 +17,7 @@ export default class LogseqClientBase {
   baseFetch = async (method: string, args: any[]) => {
     const config = await getLogseqCopliotConfig();
     const endPoint = new URL(config.logseqHost);
-    const apiUrl = new URL(`${endPoint.origin}/api`);
+    const apiUrl = new URL(`${endPoint.pathname.replace(/\/$/, '')}/api`, endPoint.origin);
     const resp = await fetch(apiUrl, {
       mode: 'cors',
       method: 'POST',
@@ -31,7 +31,7 @@ export default class LogseqClientBase {
       }),
     });
 
-    if (resp.status !== 200) {
+    if (!resp.ok) {
       throw resp;
     }
 
@@ -46,6 +46,7 @@ export default class LogseqClientBase {
   };
 
   public isDBGraph = async () => {
-    return await this.baseJson('check_current_is_db_graph', []);
+    const resp = await this.baseJson('logseq.App.checkCurrentIsDBGraph', []);
+    return resp === true;
   };
 }

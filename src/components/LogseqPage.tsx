@@ -21,10 +21,12 @@ const LogseqPageLink = ({
     <>
       <a
         className={styles.logseqPageLink}
-        href={`logseq://graph/${graph}?page=${page?.name}`}
+        href="#"
+        data-logseq-page={page.name}
+        onClick={(e) => e.preventDefault()}
       >
         <span className="tie tie-page"></span>
-        {page?.originalName || page?.title}
+        {page?.originalName || (page as { title?: string })?.title || page.name}
       </a>
     </>
   );

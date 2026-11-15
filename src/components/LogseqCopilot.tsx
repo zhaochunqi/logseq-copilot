@@ -1,4 +1,5 @@
 import { IconSettings } from '@tabler/icons-react';
+import React from 'react';
 import styles from './logseq.module.scss';
 import Browser from 'webextension-polyfill';
 import { LogseqBlock } from './LogseqBlock';
@@ -53,24 +54,30 @@ const LogseqCopilot = ({ graph, pages, blocks }) => {
 
   };
 
-  if (count() === 0) {
-    return (
-      <span>
-        Nothing here, Do some research with Logseq!{' '}
-        <a href={`logseq://graph/${graph}`}>Go</a>
-      </span>
-    );
-  }
+  const openViewer = (event: React.MouseEvent<HTMLDivElement>) => {
+    const target = (event.target as HTMLElement).closest('[data-logseq-page], [data-logseq-block]');
+    if (!target) return;
+    event.preventDefault();
+    const page = target.getAttribute('data-logseq-page');
+    const block = target.getAttribute('data-logseq-block');
+    Browser.runtime.sendMessage({ type: 'open-viewer', ...(page ? { page } : { block }) });
+  };
 
   return (
-    <>
-      <div className={styles.copilotCardHeader}>
-        <span>Graph: {graph}</span>
-        <IconSettings onClick={goOptionPage} size={16} />
-      </div>
-      {pagesRender()}
-      {blocksRender()}
-    </>
+    <div onClick={openViewer}>
+      {count() === 0 ? (
+        <span>Nothing here, Do some research with Logseq!</span>
+      ) : (
+        <>
+          <div className={styles.copilotCardHeader}>
+            <span>Graph: {graph}</span>
+            <IconSettings onClick={goOptionPage} size={16} />
+          </div>
+          {pagesRender()}
+          {blocksRender()}
+        </>
+      )}
+    </div>
   );
 };
 

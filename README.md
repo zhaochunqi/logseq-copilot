@@ -24,6 +24,16 @@
 
 Logseq Copilot is a Chrome extension that allows you to access your Logseq using your browser. Logseq is a privacy-first, open-source platform for knowledge sharing and management. With Logseq Copilot, you can easily retrieve relevant information from your Logseq graph and enrich your online search, reading, and learning experience. 🧠
 
+## This fork: phase 1 is read-only
+
+This fork targets [`logseq-graph`](https://github.com/xiaolutech/logseq-graph) instead
+of the Logseq desktop app: search and a built-in page viewer (`viewer.html`) render
+pages **only through its HTTP API**. No `logseq://` links, no desktop interaction.
+
+Phase 1 is read-only by design — no insert/append/update/delete, no clip capture,
+no task-marker toggle. The boundary, API contract and acceptance checks live in
+[`docs/phase-1-read-only.md`](docs/phase-1-read-only.md).
+
 [Documents](https://logseq-copilot.eindex.me)
 
 ## Features

@@ -1,0 +1,100 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:global(html),
+:global(body),
+:global(#app-container) {
+  min-height: 100%;
+  width: 100%;
+  margin: 0;
+}
+
+:global(body) {
+  @apply bg-white text-gray-900 dark:bg-gray-900 dark:text-gray-100;
+}
+
+.viewer {
+  min-height: 100vh;
+  box-sizing: border-box;
+  padding: 2rem 1.25rem 4rem;
+}
+
+.content {
+  max-width: 48rem;
+  margin: 0 auto;
+}
+
+.header {
+  @apply border-b border-gray-200 dark:border-gray-700 pb-5 mb-6;
+}
+
+.toolbar {
+  @apply mb-4 flex gap-2;
+}
+
+.navButton {
+  @apply rounded border border-gray-300 px-3 py-1 text-xs text-gray-700 hover:bg-gray-100 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-800;
+}
+
+.title {
+  @apply text-3xl font-bold tracking-tight;
+  overflow-wrap: anywhere;
+}
+
+.metadata {
+  @apply flex items-center gap-3 mt-3 text-sm text-gray-500 dark:text-gray-400;
+}
+
+.badge {
+  @apply rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-800 dark:bg-blue-900 dark:text-blue-200;
+}
+
+.properties {
+  @apply mb-6 rounded-lg border border-gray-200 dark:border-gray-700;
+}
+
+.propertyList {
+  @apply grid grid-cols-1 gap-2 p-4 sm:grid-cols-2;
+}
+
+.property {
+  @apply text-sm;
+  overflow-wrap: anywhere;
+}
+
+.propertyKey {
+  @apply font-semibold text-gray-600 dark:text-gray-300;
+}
+
+.blocks {
+  @apply flex flex-col gap-1;
+}
+
+.block {
+  @apply flex items-start gap-2 rounded-md px-2 py-1 transition-colors;
+  scroll-margin-top: 1rem;
+}
+
+.highlight {
+  @apply bg-yellow-100 ring-2 ring-yellow-300 dark:bg-yellow-900/50 dark:ring-yellow-700;
+}
+
+.bullet {
+  @apply mt-1 text-gray-400;
+  flex: 0 0 1rem;
+  text-align: center;
+}
+
+.blockBody {
+  @apply min-w-0 flex-1;
+  overflow-wrap: anywhere;
+}
+
+.state {
+  @apply py-16 text-center text-gray-500 dark:text-gray-400;
+}
+
+.error {
+  @apply text-red-600 dark:text-red-400;
+}

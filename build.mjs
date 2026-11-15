@@ -27,6 +27,7 @@ async function runEsbuild() {
       'src/pages/background/index.ts',
       'src/pages/options/index.tsx',
       'src/pages/popup/index.tsx',
+      'src/pages/viewer/index.tsx',
     ],
     bundle: true,
     outdir: outdir,
@@ -85,8 +86,11 @@ async function build() {
     { src: 'build/options/index.css', dst: 'options.css' },
     { src: 'build/popup/index.js', dst: 'popup.js' },
     { src: 'build/popup/index.css', dst: 'popup.css' },
+    { src: 'build/viewer/index.js', dst: 'viewer.js' },
+    { src: 'build/viewer/index.css', dst: 'viewer.css' },
     { src: 'src/pages/options/index.html', dst: 'options.html' },
     { src: 'src/pages/popup/index.html', dst: 'popup.html' },
+    { src: 'src/pages/viewer/index.html', dst: 'viewer.html' },
     { src: 'src/assets', dst: 'assets' },
   ];
 

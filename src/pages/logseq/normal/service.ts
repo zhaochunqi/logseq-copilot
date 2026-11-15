@@ -1,4 +1,4 @@
-import { LogseqBlockType } from '../../../types/logseqBlock';
+import { LogseqBlockType, PageView } from '../../../types/logseqBlock';
 import LogseqClient from './client';
 import { renderBlock } from '../tool';
 import { LogseqServiceInterface } from '../interfaces';
@@ -8,6 +8,56 @@ export default class LogseqService implements LogseqServiceInterface {
 
   public async getGraph() {
     return (await this.client.getGraph()).name;
+  }
+
+  public async getPageView(name: string): Promise<PageView | null> {
+    const seen = new Set<string>();
+    let lookupName = name;
+    let meta: any;
+    while (true) {
+      seen.add(lookupName.toLowerCase());
+      try {
+        meta = await this.client.getPage({ name: lookupName });
+        break;
+      } catch (error: any) {
+        const is404 = (error instanceof Response && error.status === 404) || error?.status === 404;
+        if (!is404) throw error;
+        const searchResult: any = await this.client.search(lookupName).catch(() => null);
+        const candidate = searchResult?.page_candidates?.find(
+          (item: any) => item?.via === 'alias' &&
+            typeof item.alias === 'string' &&
+            item.alias.toLowerCase() === lookupName.toLowerCase() &&
+            typeof item.name === 'string' && !seen.has(item.name.toLowerCase()),
+        );
+        if (!candidate) return null;
+        lookupName = candidate.name;
+      }
+    }
+
+    const snapshot = await this.client.getPageSnapshot(lookupName);
+    let blocks;
+    let properties = meta.properties ?? [];
+    if (snapshot?.exists) {
+      blocks = snapshot.blocks;
+      properties = snapshot.properties ?? properties;
+    } else {
+      try {
+        const tree = await this.client.getPageBlocksTree(lookupName);
+        blocks = tree.blocks;
+      } catch (error: any) {
+        if ((error instanceof Response && error.status === 404) || error?.status === 404) {
+          return null;
+        }
+        throw error;
+      }
+    }
+    return {
+      name: meta.name,
+      originalName: meta.originalName ?? meta.name,
+      journal: !!meta['journal?'],
+      properties,
+      blocks,
+    };
   }
 
   public async showMsg(message: string) {
@@ -110,35 +160,4 @@ export default class LogseqService implements LogseqServiceInterface {
     };
   }
 
-  public async changeBlockMarker(uuid: string, marker: string) {
-    const graph = await this.getGraph();
-    const block = await this.getBlock(uuid, graph);
-
-    if (block.content.includes('SCHEDULED:')) {
-      return {
-        type: 'change-block-marker-result',
-        uuid: uuid,
-        status: 'failed',
-        msg: 'Not support scheduled task.',
-      };
-    }
-    block.content = block.content.replace(block.marker, marker);
-
-    const result = await this.client.updateBlock(block);
-    console.debug(result);
-    if (Object.hasOwnProperty(result, 'error')) {
-      return {
-        type: 'change-block-marker-result',
-        uuid: uuid,
-        status: 'failed',
-        msg: 'error',
-      };
-    }
-    return {
-      type: 'change-block-marker-result',
-      uuid: uuid,
-      status: 'success',
-      marker: marker,
-    };
-  }
 }

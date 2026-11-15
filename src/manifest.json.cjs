@@ -50,21 +50,7 @@ const build = (releaseFor) => {
       browser_style: false,
       open_in_tab: true,
     },
-    commands: {
-      clip: {
-        suggested_key: {
-          default: 'Ctrl+Shift+U',
-        },
-        description: 'Make Clip note',
-      },
-    },
-    web_accessible_resources: [
-      {
-        resources: ['content-script.css', 'assets/img/logo.png'],
-        matches: ['http://*/*', 'https://*/*', '<all_urls>'],
-      },
-    ],
-    permissions: ['storage', 'activeTab', 'contextMenus'],
+    permissions: ['storage', 'activeTab'],
     host_permissions: ['<all_urls>'],
     ...ReleaseFor[releaseFor],
   };

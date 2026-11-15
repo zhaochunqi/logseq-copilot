@@ -14,29 +14,6 @@ export default function Popup() {
   const [logseqSearchResult, setLogseqSearchResult] =
     React.useState<LogseqSearchResult>();
 
-  const mountOpenPageMethod = () => {
-    const innerFunction = () => {
-      if (isLoading) return;
-      document.querySelectorAll('a').forEach((e) => {
-        if (e.onclick === null) {
-          e.onclick = () => {
-            Browser.runtime
-              .sendMessage({
-                type: 'open-page',
-                url: e.href,
-              })
-              .then(() => window.close());
-          };
-        }
-        if (!isLoading) {
-          clearInterval(interval);
-
-        }
-      });
-    };
-    const interval = setInterval(innerFunction, 50);
-  };
-
   useEffect(() => {
     if (isLoading) return;
 
@@ -53,7 +30,6 @@ export default function Popup() {
       if (result.status !== 200) return;
 
       setLogseqSearchResult(result.response!);
-      mountOpenPageMethod();
     });
   }, []);
 
@@ -61,8 +37,17 @@ export default function Popup() {
     Browser.runtime.sendMessage({ type: 'open-options' });
   };
 
+  const openViewer = (event: React.MouseEvent<HTMLDivElement>) => {
+    const target = (event.target as HTMLElement).closest('[data-logseq-page], [data-logseq-block]');
+    if (!target) return;
+    event.preventDefault();
+    const page = target.getAttribute('data-logseq-page');
+    const block = target.getAttribute('data-logseq-block');
+    Browser.runtime.sendMessage({ type: 'open-viewer', ...(page ? { page } : { block }) }).then(() => window.close());
+  };
+
   return (
-    <div className="copilot">
+    <div className="copilot" onClick={openViewer}>
       <div className={styles.content}>
         <div className={styles.copilotCardHeader}>
           <span>Graph: {logseqSearchResult?.graph}</span>
