@@ -5,16 +5,32 @@ import { useLogseqSearch } from '@/hooks/use-logseq-search';
 import { usePageHighlights } from '@/hooks/use-page-highlights';
 import { usePageRecall } from '@/hooks/use-page-recall';
 import { sendMessage } from '@/types/messaging';
+import { browser } from 'wxt/browser';
 import log from '@/utils/logger';
 import { openLogseqLinksFromBackground } from '@/utils/logseq-links';
 
 /**
  * This page has no tab of its own, so `logseq:openLink` (which opens the link
- * in its sender's tab) would be ignored. `app:openPage` has the background
- * open it in the active tab, the page beside this sidebar; a `logseq:` URL
- * launches Logseq and leaves that page where it is.
+ * in its sender's tab) would be ignored. Logseq links are translated to the
+ * extension's read-only Graph page and opened in a new tab.
  */
-const openInActiveTab = (url: string) => sendMessage('app:openPage', { url });
+const openGraphPage = async (url: string) => {
+  const parsed = new URL(url);
+  const page = parsed.searchParams.get('page');
+  const block = parsed.searchParams.get('block-id');
+  const query = page
+    ? `?page=${encodeURIComponent(page)}`
+    : block
+      ? `?block=${encodeURIComponent(block)}`
+      : '';
+  const graphUrl = `${browser.runtime.getURL('/graph.html' as any)}${query}`;
+  try {
+    await browser.tabs.create({ url: graphUrl });
+  } catch (error) {
+    log.warn('Failed to open the Graph page in a new tab:', error);
+    await sendMessage('app:openPage', { url: graphUrl });
+  }
+};
 
 const openSettings = () => {
   sendMessage('app:openOptions').catch((error) =>
@@ -39,11 +55,12 @@ export default function App() {
 
   const tabId = tab?.id;
 
-  // `logseq:` links are opened by the background, like in the sidebar drawn
-  // on pages: followed here, they would load in this page.
+  // `logseq:` links are intercepted and turned into the extension's Graph
+  // page, so following one here does not launch the desktop app or replace
+  // the page beside this sidebar.
   const root = useRef<HTMLDivElement>(null);
   useEffect(
-    () => openLogseqLinksFromBackground(root.current!, openInActiveTab),
+    () => openLogseqLinksFromBackground(root.current!, openGraphPage),
     [],
   );
 

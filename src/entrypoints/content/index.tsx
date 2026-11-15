@@ -4,6 +4,7 @@ import { createRoot } from 'react-dom/client';
 import { browser } from 'wxt/browser';
 import { LogseqCopliot } from './LogseqCopliot';
 import { startInPageSidebar } from './InPageSidebar';
+import { startPageViewer } from './PageViewer';
 import { detectArc } from './arc-detection';
 import { CustomSearchEngine } from './searchingEngines/searchingEngines';
 import { keepOnPage } from './searchingEngines/keep-on-page';
@@ -51,6 +52,7 @@ export default defineContentScript({
     // page (src/utils/sidebar.ts): once per tab, so in the top frame of web
     // pages.
     if (window.top === window && /^https?:$/.test(location.protocol)) {
+      startPageViewer(ctx).catch((error) => log.error('[content] Failed to start PageViewer', error));
       startInPageSidebar(ctx).catch((error) =>
         log.error('[content] Failed to start the in-page sidebar', error),
       );

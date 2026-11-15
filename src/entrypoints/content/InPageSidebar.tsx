@@ -13,6 +13,7 @@ import { sendMessage } from '@/types/messaging';
 import { HighlightManager } from '@/utils/highlight-manager';
 import log from '@/utils/logger';
 import { openLogseqLinksFromBackground } from '@/utils/logseq-links';
+import { openPageViewer } from './PageViewer';
 import { shadowRootMode } from '@/utils/shadow-mode';
 import { inPageSidebarOpenItem } from '@/utils/storage';
 import { zIndex } from '@/utils/z-index';
@@ -32,8 +33,9 @@ const openSettings = () => {
  * The sidebar for browsers without one of their own (Safari, Firefox for
  * Android): the same panel as the browser sidebar, docked to the right edge
  * of the page. It covers the page and leaves its layout alone. Its `logseq:`
- * links are opened by the background (openLogseqLinksFromBackground on the
- * shadow root, in startInPageSidebar).
+ * links are parsed and opened in the in-page PageViewer drawer, not in the
+ * desktop app (openLogseqLinksFromBackground on the shadow root, in
+ * startInPageSidebar).
  */
 export function InPageSidebar({ url }: InPageSidebarProps) {
   const { highlights, notice, setNotice, deleteHighlight, updateNote } =
@@ -118,7 +120,14 @@ export async function startInPageSidebar(
         },
         onRemove: (root) => root?.unmount(),
       });
-      openLogseqLinksFromBackground(ui.shadow);
+      openLogseqLinksFromBackground(ui.shadow, async (raw) => {
+        try {
+          const url = new URL(raw);
+          const page = url.searchParams.get('page');
+          const block = url.searchParams.get('block-id');
+          if (page || block) openPageViewer({ ...(page ? { page } : {}), ...(block ? { block } : {}) });
+        } catch { /* ignore malformed links */ }
+      });
       // Redraw for the address the tab is at, once it has changed. Not for the
       // newUrl of wxt:locationchange: with the Navigation API, WXT sends it
       // from the navigate event, before the navigation happens. That URL is

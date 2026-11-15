@@ -35,6 +35,22 @@ export default defineBackground({
     // Executed when background is loaded, CANNOT BE ASYNC
 
     // Register message handlers using @webext-core/messaging
+    onMessage('logseq:pageView', async ({ data }) => {
+      try {
+        const service = await getLogseqService();
+        let page = data.page;
+        if (!page && data.block) {
+          const block = await service.client.getBlockViaUuid(data.block, {});
+          page = block?.page?.name;
+        }
+        if (!page || !service.getPageView) return null;
+        return await service.getPageView(page);
+      } catch (error) {
+        log.warn('[background] Failed to read page view:', error);
+        return null;
+      }
+    });
+
     onMessage('logseq:search', async ({ data }) => {
       const logseqService = await getLogseqService();
       const searchRes = await logseqService.search(data);

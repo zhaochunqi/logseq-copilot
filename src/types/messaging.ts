@@ -4,7 +4,7 @@ import {
   type GetDataType,
   type GetReturnType,
 } from '@webext-core/messaging';
-import { LogseqSearchResult } from './logseqBlock';
+import type { LogseqSearchResult, PageView } from './logseqBlock';
 import { LogseqResponseType } from '@/entrypoints/background/logseq/client';
 import type { RecallResult } from './recall';
 
@@ -12,6 +12,9 @@ import type { RecallResult } from './recall';
 export interface MessagingProtocol {
   // Background script messages
   'logseq:search': (query: string) => LogseqResponseType<LogseqSearchResult>;
+
+  /** Whole page read for the in-page PageViewer, by page name or block UUID. */
+  'logseq:pageView': (data: { page?: string; block?: string }) => PageView | null;
 
   /** The recall rules matching `url` decide how far up its path to search. */
   'logseq:urlSearch': (data: {

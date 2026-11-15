@@ -172,6 +172,7 @@ describe('sidepanel App', () => {
     vi.spyOn(browser.tabs, 'get').mockImplementation(
       async (tabId: number) => tabs[tabId],
     );
+    vi.spyOn(browser.tabs, 'create').mockResolvedValue(undefined);
   });
 
   afterEach(() => {
@@ -662,7 +663,7 @@ describe('sidepanel App', () => {
       expect(urlSearch).toHaveBeenCalledTimes(2);
     });
 
-    it('has the background open logseq: links, leaving this page where it is', async () => {
+    it('opens graph pages in a new tab instead of launching the desktop app', async () => {
       logseqHas([
         logseqBlock('b1', '<p>see <a href="logseq://graph/my%20notes?page=books">books</a></p>'),
       ]);
@@ -673,11 +674,12 @@ describe('sidepanel App', () => {
       expect(userClick(screen.getByRole('link', { name: 'Reading' }))).toBe(true);
       expect(userClick(screen.getByRole('link', { name: GRAPH }))).toBe(true);
 
-      expect(sendMessage.mock.calls).toEqual([
-        ['app:openPage', { url: 'logseq://graph/my%20notes?page=books' }],
-        ['app:openPage', { url: 'logseq://graph/my%20notes?page=reading' }],
-        ['app:openPage', { url: 'logseq://graph/my%20notes' }],
-      ]);
+      expect(browser.tabs.create).toHaveBeenCalledTimes(3);
+      const urls = vi.mocked(browser.tabs.create).mock.calls.map(([options]) => options.url);
+      expect(urls[0]).toContain('graph.html?page=books');
+      expect(urls[1]).toContain('graph.html?page=reading');
+      expect(urls[2]).toContain('graph.html');
+      expect(sendMessage.mock.calls.filter(([type]) => type === 'app:openPage')).toEqual([]);
     });
 
     it('opens web links in a new tab', async () => {

@@ -20,6 +20,7 @@ import type { HighlightData } from '@/types/highlight';
 vi.mock('@/assets/globals.css', () => ({}));
 // logseq:urlSearch (what Logseq has about the page) has a mock of its own.
 const sendMessage = vi.hoisted(() => vi.fn());
+const openPageViewer = vi.hoisted(() => vi.fn());
 const urlSearch = vi.hoisted(() => vi.fn());
 vi.mock('@/types/messaging', () => ({
   sendMessage: (type: string, ...args: unknown[]) =>
@@ -57,6 +58,7 @@ const fakeUi = vi.hoisted(() => async (_ctx: unknown, options: any) => {
 vi.mock('wxt/utils/content-script-ui/shadow-root', () => ({
   createShadowRootUi: vi.fn(fakeUi),
 }));
+vi.mock('./PageViewer', () => ({ openPageViewer }));
 
 import { createShadowRootUi } from 'wxt/utils/content-script-ui/shadow-root';
 import { HighlightManager } from '@/utils/highlight-manager';
@@ -145,6 +147,7 @@ describe('InPageSidebar', () => {
   beforeEach(() => {
     fakeBrowser.reset();
     sendMessage.mockReset().mockResolvedValue(undefined);
+    openPageViewer.mockReset();
     urlSearch.mockReset().mockImplementation(logseqAnswers);
     vi.spyOn(log, 'error').mockImplementation(() => {});
     vi.spyOn(log, 'warn').mockImplementation(() => {});
@@ -372,7 +375,7 @@ describe('startInPageSidebar', () => {
     expect(host()).toBeNull();
   });
 
-  it('has the background open logseq: links in this tab', async () => {
+  it('opens logseq: page links in the in-page PageViewer, not the desktop app', async () => {
     await fakeBrowser.storage.local.set({ inPageSidebarOpen: true });
     await start();
     await screen.findByText('books');
@@ -380,10 +383,12 @@ describe('startInPageSidebar', () => {
     expect(userClick(screen.getByText('books'))).toBe(true);
     expect(userClick(screen.getByRole('link', { name: GRAPH }))).toBe(true);
 
-    expect(sendMessage.mock.calls).toEqual([
-      ['logseq:openLink', { url: 'logseq://graph/my%20notes?page=books' }],
-      ['logseq:openLink', { url: 'logseq://graph/my%20notes' }],
-    ]);
+    expect(openPageViewer).toHaveBeenCalledWith({ page: 'books' });
+    // A graph-only logseq: link is parsed, but opens nothing.
+    expect(openPageViewer).toHaveBeenCalledTimes(1);
+    expect(
+      sendMessage.mock.calls.filter(([type]) => type === 'logseq:openLink'),
+    ).toEqual([]);
   });
 
   it('keeps the page from seeing keys typed in it', async () => {
