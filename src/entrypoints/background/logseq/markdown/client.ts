@@ -64,14 +64,10 @@ export default class LogseqClient
   public getPage = async (
     pageIdentity: string | Partial<LogseqPageIdenity>,
   ): Promise<LogseqPageResponse> => {
-    const identity =
-      typeof pageIdentity === 'string' ? { name: pageIdentity } : pageIdentity;
     const payload =
-      identity.id !== undefined
-        ? { id: identity.id }
-        : identity.uuid
-        ? { uuid: identity.uuid }
-        : { name: identity.name };
+      typeof pageIdentity === 'string'
+        ? pageIdentity
+        : pageIdentity.id ?? pageIdentity.uuid ?? pageIdentity.name;
     return await this.baseJson('logseq.Editor.getPage', [payload]);
   };
 

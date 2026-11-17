@@ -98,8 +98,8 @@ describe('getPageView', () => {
     stubApi((method, args) => {
       if (method === 'logseq.Editor.getPage') {
         pageCalls.push(args);
-        const identity = args[0] as { name?: string };
-        return identity.name === 'Canonical'
+        const identity = args[0];
+        return identity === 'Canonical'
           ? page('Canonical')
           : new Response('not found', { status: 404 });
       }
@@ -113,7 +113,7 @@ describe('getPageView', () => {
     });
     const result = await new LogseqService().getPageView('legacy');
     expect(result?.name).toBe('Canonical');
-    expect(pageCalls).toEqual([[{ name: 'legacy' }], [{ name: 'Canonical' }]]);
+    expect(pageCalls).toEqual([['legacy'], ['Canonical']]);
   });
 
   test('falls back to page blocks tree when snapshot is unavailable', async () => {

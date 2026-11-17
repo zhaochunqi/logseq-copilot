@@ -138,15 +138,15 @@ export async function startFakeLogseqGraph(
         };
       case 'logseq.Editor.getPage': {
         const identity = args[0];
+        // Native Logseq resolves a scalar name, uuid or id. Identity objects
+        // are not supported, unlike the earlier graph fixture assumed.
         const page = pages.find((p) =>
-          typeof identity === 'string'
-            ? p.name.toLowerCase() === identity.toLowerCase()
-            : identity?.id !== undefined
-            ? p.id === identity.id
-            : identity?.uuid
-            ? p.uuid === identity.uuid
-            : p.name.toLowerCase() ===
-              String(identity?.name ?? '').toLowerCase(),
+          typeof identity === 'number'
+            ? p.id === identity
+            : typeof identity === 'string'
+            ? p.uuid === identity ||
+              p.name.toLowerCase() === identity.toLowerCase()
+            : false,
         );
         return page
           ? pageIdentity(page)

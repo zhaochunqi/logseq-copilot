@@ -5,10 +5,10 @@ import { escapeQueryString } from './client';
 
 describe('markdown client getPage identity', () => {
   test.each([
-    ['name', { name: 'Page' }, { name: 'Page' }],
-    ['uuid', { uuid: 'page-uuid' }, { uuid: 'page-uuid' }],
-    ['id', { id: 42 }, { id: 42 }],
-  ])('sends the %s identity object', async (_label, identity, expected) => {
+    ['name', { name: 'Page' }, 'Page'],
+    ['uuid', { uuid: 'page-uuid' }, 'page-uuid'],
+    ['id', { id: 42 }, 42],
+  ])('sends the %s identity', async (_label, identity, expected) => {
     const client = new MarkdownClient();
     const spy = vi.fn().mockResolvedValue({ name: 'Page' });
     client.baseJson = spy;
